@@ -1,0 +1,18 @@
+{
+  "tokenSetOrder": [
+    "global",
+    "color/primitives/pale",
+    "color/mint/dark",
+    "color/mint/light",
+    "color/sand/dark",
+    "color/sand/light",
+    "color/plum/dark",
+    "color/plum/light",
+    "color/clay/dark",
+    "color/clay/light",
+    "color/slate/dark",
+    "color/slate/light",
+    "color/stone/dark",
+    "color/stone/light"
+  ]
+}

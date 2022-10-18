@@ -1,0 +1,26 @@
+{
+  "background": {
+    "value": "{clay.0}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{clay.1}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{clay.2}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{clay.3}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{clay.4}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{clay.7}",
+    "type": "color"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "background": {
+    "value": "{mint.7}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{mint.6}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{mint.5}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{mint.4}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{mint.3}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{mint.0}",
+    "type": "color"
+  }
+}

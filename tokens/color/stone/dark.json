@@ -1,0 +1,26 @@
+{
+  "background": {
+    "value": "{stone.0}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{stone.1}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{stone.2}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{stone.3}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{stone.4}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{stone.7}",
+    "type": "color"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "background": {
+    "value": "{plum.7}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{plum.6}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{plum.5}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{plum.4}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{plum.3}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{plum.0}",
+    "type": "color"
+  }
+}

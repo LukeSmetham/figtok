@@ -1,0 +1,12 @@
+{
+  "text": {
+    "value": "Satoshi Variable",
+    "type": "fontFamilies"
+  },
+  "radius": {
+    "card": {
+      "value": "32px",
+      "type": "borderRadius"
+    }
+  }
+}
