@@ -10,4 +10,4 @@ glob = "*"
 serde = "*"
 serde_json = "*"
 serde_derive = "*"
-
+specs = "*"
