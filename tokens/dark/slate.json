@@ -1,0 +1,56 @@
+{
+  "background": {
+    "value": "{slate.0}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{slate.1}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{slate.2}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{slate.3}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{slate.4}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{slate.7}",
+    "type": "color"
+  },
+  "glass": {
+    "value": "rgba({slate.1}, 0.7)",
+    "type": "color"
+  },
+  "inverse": {
+    "background": {
+      "value": "{slate.7}",
+      "type": "color"
+    },
+    "surface": {
+      "value": "{slate.6}",
+      "type": "color"
+    },
+    "border": {
+      "value": "{slate.5}",
+      "type": "color"
+    },
+    "on-low": {
+      "value": "{slate.4}",
+      "type": "color"
+    },
+    "on-mid": {
+      "value": "{slate.3}",
+      "type": "color"
+    },
+    "on": {
+      "value": "{slate.0}",
+      "type": "color"
+    }
+  }
+}

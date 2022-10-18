@@ -1,0 +1,56 @@
+{
+  "background": {
+    "value": "{sand.0}",
+    "type": "color"
+  },
+  "surface": {
+    "value": "{sand.1}",
+    "type": "color"
+  },
+  "border": {
+    "value": "{sand.2}",
+    "type": "color"
+  },
+  "on-low": {
+    "value": "{sand.3}",
+    "type": "color"
+  },
+  "on-mid": {
+    "value": "{sand.4}",
+    "type": "color"
+  },
+  "on": {
+    "value": "{sand.7}",
+    "type": "color"
+  },
+  "glass": {
+    "value": "rgba({sand.1}, 0.7)",
+    "type": "color"
+  },
+  "inverse": {
+    "background": {
+      "value": "{sand.7}",
+      "type": "color"
+    },
+    "surface": {
+      "value": "{sand.6}",
+      "type": "color"
+    },
+    "border": {
+      "value": "{sand.5}",
+      "type": "color"
+    },
+    "on-low": {
+      "value": "{sand.4}",
+      "type": "color"
+    },
+    "on-mid": {
+      "value": "{sand.3}",
+      "type": "color"
+    },
+    "on": {
+      "value": "{sand.0}",
+      "type": "color"
+    }
+  }
+}
