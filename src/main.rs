@@ -19,19 +19,26 @@ impl Component for TokenComponent {
 }
 
 #[derive(Debug)]
-struct IdentityComponent(String);
+struct IdentityComponent {
+    id: String
+}
 impl Component for IdentityComponent {
     type Storage = VecStorage<Self>;
 }
 
 #[derive(Debug)]
-struct ValueComponent(String);
+struct ValueComponent {
+    _current: String,
+    value: String
+}
 impl Component for ValueComponent {
     type Storage = VecStorage<Self>;
 }
 
 #[derive(Debug)]
-struct ReferenceComponent(String);
+struct ReferenceComponent {
+    token: String
+}
 impl Component for ReferenceComponent {
     type Storage = VecStorage<Self>;
 }
@@ -57,18 +64,30 @@ fn get_type(kind: TokenKind) {
 }
 
 // Systems
+
+/// Reference System
+/// 
+/// Responsible for linking together a token that references another token that is defined in the system.
 struct ReferenceSystem;
 impl<'a> System<'a> for ReferenceSystem {
-    type SystemData = (WriteStorage<'a, ValueComponent>, ReadStorage<'a, ReferenceComponent>);
+    type SystemData = (WriteStorage<'a, ValueComponent>, ReadStorage<'a, ReferenceComponent>, ReadStorage<'a, IdentityComponent>, Entities<'a>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (mut value, reference) = data;
+        let (mut value_store, reference_store, identity_store, entities) = data;
 
         println!("VALUE SYSTEM TICK");
         // Loop over all components that have a reference.
-        for (value,reference) in (&mut value, &reference).join() {
-            // println!("value: {:?}, reference: {:?}", value, reference);
-            // Follow the reference (get token by name), and Set "value" to the referenced value.
+        for (value,reference) in (&mut value_store, &reference_store).join() {
+            println!("get reference: {:?}", reference);
+
+            // Find the referenced token.
+            let matched = (&identity_store, &entities).join()
+                .filter(|(identity, _)| identity.id == "mint.0".to_string())
+                .collect::<Vec<(&IdentityComponent, Entity)>>();
+            
+            let (_, entity) = matched[0];
+            // Here we need to somehow get the correct value from the referenced entity found above.
+            value._current = "REPLACED".to_string();
         }
     }
 }
@@ -82,8 +101,8 @@ impl<'a> System<'a> for DebugSystem {
 
         println!("DEBUG SYSTEM TICK");
         // Loop over all components that have a reference.
-        for (identity, value) in (&identity, &value).join() {
-            println!("token: {:?}, value: {:?}", identity, value);
+        for (id, value) in (&identity, &value).join() {
+            println!("token: {:?}, value: {:?}", id, value);
             // Follow the reference (get token by name), and Set "value" to the referenced value.
         }
     }
@@ -127,19 +146,19 @@ fn main() {
 
     let entity1 = state.ecs
         .create_entity()
-        .with(IdentityComponent("mint.0".to_string()))
-        .with(ValueComponent("#0E100E".to_string()))
+        .with(IdentityComponent { id: "mint.0".to_string() })
+        .with(ValueComponent { value: "#0E100E".to_string(), _current: "#0E100E".to_string() })
         .with(ColorComponent{})
         .with(TokenComponent{})
         .build();
     
     let entity2 = state.ecs
         .create_entity()
-        .with(IdentityComponent("background".to_string()))
-        .with(ValueComponent("{mint.0}".to_string()))
-        .with(ReferenceComponent("{mint.0}".to_string()))
+        .with(IdentityComponent { id: "background".to_string() })
+        .with(ValueComponent { value: "{mint.0}".to_string(), _current: "{mint.0}".to_string() })
         .with(ColorComponent{})
         .with(TokenComponent{})
+        .with(ReferenceComponent { token: "mint.0".to_string() })
         .build();
 
     dispatcher.dispatch(&state.ecs);
