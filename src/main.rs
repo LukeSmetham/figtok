@@ -102,64 +102,68 @@ impl<'a> System<'a> for DebugSystem {
         println!("DEBUG SYSTEM TICK");
         // Loop over all components that have a reference.
         for (id, value) in (&identity, &value).join() {
-            println!("token: {:?}, value: {:?}", id, value);
+            println!("TOKEN • id: {:?} • value: {:?}", id.id, value.value);
             // Follow the reference (get token by name), and Set "value" to the referenced value.
         }
     }
 }
 
 // Main
-pub struct State {
-    ecs: World
+pub struct Builder {
+    ecs: World,
+    loader: Loader
 }
 
 fn main() {
     println!("Hello, world!");
 
-    let mut state = State {
-        ecs: World::new()
+    let mut builder = Builder {
+        ecs: World::new(),
+        loader: Loader::new("./tokens/$metadata.json".to_string())
     };
 
+    // Register any components
+
     // Core Components
-    state.ecs.register::<IdentityComponent>();
-    state.ecs.register::<ValueComponent>();
-    state.ecs.register::<ReferenceComponent>();
+    builder.ecs.register::<IdentityComponent>();
+    builder.ecs.register::<ValueComponent>();
+    builder.ecs.register::<ReferenceComponent>();
     
     // Entity Type Components
-    state.ecs.register::<TokenComponent>();
+    builder.ecs.register::<TokenComponent>();
 
     // Property Commponents
-    state.ecs.register::<ColorComponent>();
+    builder.ecs.register::<ColorComponent>();
 
-    // Dispatcher
+    // Create the dispatcher
     let mut dispatcher = DispatcherBuilder::new()
         .with(ReferenceSystem, "value_sys", &[])
         .with(DebugSystem, "debug_sys", &[])
         .build();
     // setup() must be called before creating any entities, it will register
     // all Components and Resources that Systems depend on
-    dispatcher.setup(&mut state.ecs);
+    dispatcher.setup(&mut builder.ecs);
 
     // Load Data
     let loader = Loader::new("./tokens/$metadata.json".to_string());
-    loader.load().unwrap();
+    builder.loader.load(&mut builder.ecs).unwrap();
 
-    let entity1 = state.ecs
-        .create_entity()
-        .with(IdentityComponent { id: "mint.0".to_string() })
-        .with(ValueComponent { value: "#0E100E".to_string(), _current: "#0E100E".to_string() })
-        .with(ColorComponent{})
-        .with(TokenComponent{})
-        .build();
+    // let entity1 = state.ecs
+    //     .create_entity()
+    //     .with(IdentityComponent { id: "mint.0".to_string() })
+    //     .with(ValueComponent { value: "#0E100E".to_string(), _current: "#0E100E".to_string() })
+    //     .with(ColorComponent{})
+    //     .with(TokenComponent{})
+    //     .build();
     
-    let entity2 = state.ecs
-        .create_entity()
-        .with(IdentityComponent { id: "background".to_string() })
-        .with(ValueComponent { value: "{mint.0}".to_string(), _current: "{mint.0}".to_string() })
-        .with(ColorComponent{})
-        .with(TokenComponent{})
-        .with(ReferenceComponent { token: "mint.0".to_string() })
-        .build();
+    // let entity2 = state.ecs
+    //     .create_entity()
+    //     .with(IdentityComponent { id: "background".to_string() })
+    //     .with(ValueComponent { value: "{mint.0}".to_string(), _current: "{mint.0}".to_string() })
+    //     .with(ColorComponent{})
+    //     .with(TokenComponent{})
+    //     .with(ReferenceComponent { token: "mint.0".to_string() })
+    //     .build();
 
-    dispatcher.dispatch(&state.ecs);
+    dispatcher.dispatch(&builder.ecs);
 }

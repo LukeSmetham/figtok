@@ -4,6 +4,12 @@ use std::{
 	collections::HashMap
 };
 
+use crate::{specs::WorldExt};
+use crate::specs::Builder;
+use specs::World;
+
+use crate::{TokenComponent, IdentityComponent, ValueComponent};
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
@@ -32,7 +38,7 @@ fn read_file(filepath: &str) -> Result<String, Box<dyn Error>> {
 /// 
 /// If we can't find a "type" field on the current element in iteration, we recurse by converting
 /// the serde_json::Value to a HashMap<String, serde_json::Value> once again, and calling parse_token_set again.
-fn parse_token_set(token_set: HashMap<String, serde_json::Value>) {
+fn parse_token_set(ecs: &mut World, token_set: HashMap<String, serde_json::Value>) {
     for (key, value) in token_set {
         let kind = value.get("type");
 
@@ -40,14 +46,18 @@ fn parse_token_set(token_set: HashMap<String, serde_json::Value>) {
             Some(_) => {
                 // Found a Token definition.
                 let token: TokenDefinition = serde_json::from_value(value).unwrap();
-                println!("{:?}", token);
-                println!("\n\n");
+				ecs
+					.create_entity()
+					.with(IdentityComponent { id: key })
+					.with(TokenComponent{})
+					.with(ValueComponent{ value: token.value.to_string(), _current: token.value.to_string() })
+					.build();
             }
             None => {
                 // Nested object, parse and recurse.
                 println!("{:?} No Type Key: {:?}", key, kind);
                 let new_set: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
-                parse_token_set(new_set);
+                parse_token_set(ecs, new_set);
             }
         }
     }
@@ -58,12 +68,12 @@ pub struct Loader {
 }
 impl Loader {
 	pub fn new(dir_path: String) -> Loader {
-		Loader{
+		Loader {
 			dir_path
 		}
 	}
 
-	pub fn load(&self) -> Result<(), Box<dyn Error>> {
+	pub fn load(&self, ecs: &mut World) -> Result<(), Box<dyn Error>> {
 		let string = read_file(&self.dir_path).unwrap();
 
 		// let serialized: HashMap<String, TokenDefinition> = serde_json::from_str(&data)?;
@@ -88,7 +98,7 @@ impl Loader {
 		for entry in metadata.get("tokenSetOrder") {
 			for slug in entry {
 				let token_set: HashMap<String, serde_json::Value> = serde_json::from_str(&files[slug])?;
-				parse_token_set(token_set);
+				parse_token_set(ecs, token_set);
 			}
 		};
 
