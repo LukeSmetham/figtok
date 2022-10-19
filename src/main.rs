@@ -49,6 +49,18 @@ impl Component for ColorComponent {
     type Storage = VecStorage<Self>;
 }
 
+#[derive(Debug)]
+struct BorderRadiusComponent {}
+impl Component for BorderRadiusComponent {
+    type Storage = VecStorage<Self>;
+}
+
+#[derive(Debug)]
+struct FontFamilyComponent {}
+impl Component for FontFamilyComponent {
+    type Storage = VecStorage<Self>;
+}
+
 fn get_type(kind: TokenKind) {
     match kind {
         TokenKind::Color => {
@@ -133,7 +145,9 @@ fn main() {
     builder.ecs.register::<TokenComponent>();
 
     // Property Commponents
+    builder.ecs.register::<BorderRadiusComponent>();
     builder.ecs.register::<ColorComponent>();
+    builder.ecs.register::<FontFamilyComponent>();
 
     // Create the dispatcher
     let mut dispatcher = DispatcherBuilder::new()

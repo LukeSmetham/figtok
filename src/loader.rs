@@ -8,7 +8,7 @@ use crate::{specs::WorldExt};
 use crate::specs::Builder;
 use specs::World;
 
-use crate::{TokenComponent, IdentityComponent, ValueComponent};
+use crate::{TokenComponent, BorderRadiusComponent, ColorComponent, IdentityComponent, FontFamilyComponent, ValueComponent};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum TokenKind {
@@ -46,12 +46,19 @@ fn parse_token_set(ecs: &mut World, token_set: HashMap<String, serde_json::Value
             Some(_) => {
                 // Found a Token definition.
                 let token: TokenDefinition = serde_json::from_value(value).unwrap();
-				ecs
+				let mut entity = ecs
 					.create_entity()
 					.with(IdentityComponent { id: key })
 					.with(TokenComponent{})
-					.with(ValueComponent{ value: token.value.to_string(), _current: token.value.to_string() })
-					.build();
+					.with(ValueComponent{ value: token.value.to_string(), _current: token.value.to_string() });
+				
+				entity = match token.kind {
+					TokenKind::BorderRadius => entity.with(BorderRadiusComponent{}),
+					TokenKind::Color => entity.with(ColorComponent{}),
+					TokenKind::FontFamily => entity.with(FontFamilyComponent{})
+				};
+
+				entity.build();
             }
             None => {
                 // Nested object, parse and recurse.
