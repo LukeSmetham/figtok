@@ -4,7 +4,7 @@ use std::{
 	collections::HashMap
 };
 
-use crate::{specs::WorldExt};
+use crate::{specs::WorldExt, TokenSetComponent};
 use crate::specs::Builder;
 use specs::World;
 
@@ -38,17 +38,20 @@ fn read_file(filepath: &str) -> Result<String, Box<dyn Error>> {
 /// 
 /// If we can't find a "type" field on the current element in iteration, we recurse by converting
 /// the serde_json::Value to a HashMap<String, serde_json::Value> once again, and calling parse_token_set again.
-fn parse_token_set(ecs: &mut World, token_set: HashMap<String, serde_json::Value>) {
-    for (key, value) in token_set {
-        let kind = value.get("type");
+fn parse_token_set(ecs: &mut World, token_set: &mut TokenSetComponent, token_set_data: HashMap<String, serde_json::Value>, prefix: Option<&mut Vec<String>>) {		
+	let p = prefix.unwrap();
+	for (key, value) in token_set_data {
+		let mut id = p.clone();
+		id.push(key.clone());
 
-        match kind {
-            Some(_) => {
-                // Found a Token definition.
-                let token: TokenDefinition = serde_json::from_value(value).unwrap();
+		let kind = value.get("type");
+		match kind {
+			Some(_) => {
+				// Found a Token definition.
+				let token: TokenDefinition = serde_json::from_value(value).unwrap();
 				let mut entity = ecs
 					.create_entity()
-					.with(IdentityComponent { id: key })
+					.with(IdentityComponent { id: id.join(".") })
 					.with(TokenComponent{})
 					.with(ValueComponent{ value: token.value.to_string(), _current: token.value.to_string() });
 				
@@ -58,16 +61,19 @@ fn parse_token_set(ecs: &mut World, token_set: HashMap<String, serde_json::Value
 					TokenKind::FontFamily => entity.with(FontFamilyComponent{})
 				};
 
+				token_set.add(entity.entity.id());
 				entity.build();
-            }
-            None => {
-                // Nested object, parse and recurse.
-                println!("{:?} No Type Key: {:?}", key, kind);
-                let new_set: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
-                parse_token_set(ecs, new_set);
-            }
-        }
-    }
+			}
+			None => {
+				// Nested object, parse and recurse.
+				println!("{:?} is nested, recursing...", key);
+				let new_set: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
+				let mut new_prefix = p.clone();
+				new_prefix.push(key);
+				parse_token_set(ecs, token_set, new_set, Some(&mut new_prefix))
+			}
+		}
+	}
 }
 
 pub struct Loader {
@@ -104,8 +110,20 @@ impl Loader {
 		// again to process everything in order.
 		for entry in metadata.get("tokenSetOrder") {
 			for slug in entry {
-				let token_set: HashMap<String, serde_json::Value> = serde_json::from_str(&files[slug])?;
-				parse_token_set(ecs, token_set);
+				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&files[slug])?;
+				let mut token_set = TokenSetComponent {
+					tokens: Vec::new()
+				};
+
+				let mut prefix: Vec<String> = vec![];
+
+				parse_token_set(ecs, &mut token_set, token_set_data, Some(&mut prefix));
+
+				// Create the TokenSet entity
+				ecs.create_entity()
+					.with(token_set)
+					.with(IdentityComponent { id: slug.to_string() })
+					.build();
 			}
 		};
 

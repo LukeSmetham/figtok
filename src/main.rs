@@ -19,6 +19,23 @@ impl Component for TokenComponent {
 }
 
 #[derive(Debug)]
+struct TokenSetComponent {
+    tokens: Vec<u32>
+}
+impl TokenSetComponent {
+    pub fn add(&mut self, entity_id: u32) {
+        &self.tokens.push(entity_id);
+    }
+    pub fn remove(&mut self, entity_id: u32) {
+        let index = self.tokens.iter().position(|&r| r == entity_id).unwrap();
+        &self.tokens.remove(index);
+    }
+}
+impl Component for TokenSetComponent {
+    type Storage = VecStorage<Self>;
+}
+
+#[derive(Debug)]
 struct IdentityComponent {
     id: String
 }
@@ -106,15 +123,19 @@ impl<'a> System<'a> for ReferenceSystem {
 
 struct DebugSystem;
 impl<'a> System<'a> for DebugSystem {
-    type SystemData = (ReadStorage<'a, IdentityComponent>, ReadStorage<'a, ValueComponent>);
+    type SystemData = (ReadStorage<'a, IdentityComponent>, ReadStorage<'a, ValueComponent>, ReadStorage<'a, TokenComponent>, ReadStorage<'a, TokenSetComponent>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (identity, value) = data;
+        let (identity, value, token, token_set) = data;
 
         println!("DEBUG SYSTEM TICK");
         // Loop over all components that have a reference.
-        for (id, value) in (&identity, &value).join() {
+        for (id, value, _) in (&identity, &value, &token).join() {
             println!("TOKEN • id: {:?} • value: {:?}", id.id, value.value);
+            // Follow the reference (get token by name), and Set "value" to the referenced value.
+        }
+        for (id, token_set) in (&identity, &token_set).join() {
+            println!("TOKEN SET • id: {:?} • {:?}", id.id, token_set.tokens);
             // Follow the reference (get token by name), and Set "value" to the referenced value.
         }
     }
@@ -127,8 +148,6 @@ pub struct Builder {
 }
 
 fn main() {
-    println!("Hello, world!");
-
     let mut builder = Builder {
         ecs: World::new(),
         loader: Loader::new("./tokens/$metadata.json".to_string())
@@ -143,6 +162,7 @@ fn main() {
     
     // Entity Type Components
     builder.ecs.register::<TokenComponent>();
+    builder.ecs.register::<TokenSetComponent>();
 
     // Property Commponents
     builder.ecs.register::<BorderRadiusComponent>();
@@ -159,25 +179,8 @@ fn main() {
     dispatcher.setup(&mut builder.ecs);
 
     // Load Data
-    let loader = Loader::new("./tokens/$metadata.json".to_string());
     builder.loader.load(&mut builder.ecs).unwrap();
 
-    // let entity1 = state.ecs
-    //     .create_entity()
-    //     .with(IdentityComponent { id: "mint.0".to_string() })
-    //     .with(ValueComponent { value: "#0E100E".to_string(), _current: "#0E100E".to_string() })
-    //     .with(ColorComponent{})
-    //     .with(TokenComponent{})
-    //     .build();
-    
-    // let entity2 = state.ecs
-    //     .create_entity()
-    //     .with(IdentityComponent { id: "background".to_string() })
-    //     .with(ValueComponent { value: "{mint.0}".to_string(), _current: "{mint.0}".to_string() })
-    //     .with(ColorComponent{})
-    //     .with(TokenComponent{})
-    //     .with(ReferenceComponent { token: "mint.0".to_string() })
-    //     .build();
-
+    // Fire dispatch to run data through the systems
     dispatcher.dispatch(&builder.ecs);
 }
