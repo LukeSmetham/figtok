@@ -20,16 +20,7 @@ impl Component for TokenComponent {
 
 #[derive(Debug)]
 struct TokenSetComponent {
-    tokens: Vec<u32>
-}
-impl TokenSetComponent {
-    pub fn add(&mut self, entity_id: u32) {
-        &self.tokens.push(entity_id);
-    }
-    pub fn remove(&mut self, entity_id: u32) {
-        let index = self.tokens.iter().position(|&r| r == entity_id).unwrap();
-        &self.tokens.remove(index);
-    }
+    id: String
 }
 impl Component for TokenSetComponent {
     type Storage = VecStorage<Self>;
@@ -106,17 +97,18 @@ impl<'a> System<'a> for ReferenceSystem {
 
         println!("VALUE SYSTEM TICK");
         // Loop over all components that have a reference.
-        for (value,reference) in (&mut value_store, &reference_store).join() {
+        for (reference, entity) in (&reference_store, &entities).join() {
             println!("get reference: {:?}", reference);
 
             // Find the referenced token.
-            let matched = (&identity_store, &entities).join()
-                .filter(|(identity, _)| identity.id == "mint.0".to_string())
-                .collect::<Vec<(&IdentityComponent, Entity)>>();
-            
-            let (_, entity) = matched[0];
-            // Here we need to somehow get the correct value from the referenced entity found above.
-            value._current = "REPLACED".to_string();
+            (&identity_store, &entities).join()
+                .filter(|(identity, _)| identity.id == reference.token.to_string())
+                .for_each(|(id, e)| {
+                    // This should only iterate once, technically if therre were two tokens with the same name, this would run twice and only the latest value would persist.
+                    let mut current_value = value_store.get(entity).unwrap();
+                    // TODO: 
+                    // current_value._current = ref_value.value.clone();
+                });
         }
     }
 }
@@ -130,14 +122,10 @@ impl<'a> System<'a> for DebugSystem {
 
         println!("DEBUG SYSTEM TICK");
         // Loop over all components that have a reference.
-        for (id, value, _) in (&identity, &value, &token).join() {
-            println!("TOKEN • id: {:?} • value: {:?}", id.id, value.value);
-            // Follow the reference (get token by name), and Set "value" to the referenced value.
-        }
-        for (id, token_set) in (&identity, &token_set).join() {
-            println!("TOKEN SET • id: {:?} • {:?}", id.id, token_set.tokens);
-            // Follow the reference (get token by name), and Set "value" to the referenced value.
-        }
+        // for (id, value, _, token_set) in (&identity, &value, &token, &token_set).join() {
+        //     println!("TOKEN • id: {:?} • value: {:?} • FROM SET: {:?}", id.id, value._current, token_set.id);
+        //     // Follow the reference (get token by name), and Set "value" to the referenced value.
+        // }
     }
 }
 
