@@ -98,16 +98,18 @@ impl<'a> System<'a> for ReferenceSystem {
         println!("VALUE SYSTEM TICK");
         // Loop over all components that have a reference.
         for (reference, entity) in (&reference_store, &entities).join() {
-            println!("get reference: {:?}", reference);
+            // println!("get reference: {:?}", reference);
 
             // Find the referenced token.
             (&identity_store, &entities).join()
                 .filter(|(identity, _)| identity.id == reference.token.to_string())
-                .for_each(|(id, e)| {
+                .for_each(|(_, e)| {
                     // This should only iterate once, technically if therre were two tokens with the same name, this would run twice and only the latest value would persist.
-                    let mut current_value = value_store.get(entity).unwrap();
+                    let ref_value = value_store.get(e);
+                    let mut current_value = value_store.get_mut(entity);
                     // TODO: 
                     // current_value._current = ref_value.value.clone();
+                    current_value.unwrap()._current = ref_value.unwrap().value.clone();
                 });
         }
     }
@@ -122,10 +124,10 @@ impl<'a> System<'a> for DebugSystem {
 
         println!("DEBUG SYSTEM TICK");
         // Loop over all components that have a reference.
-        // for (id, value, _, token_set) in (&identity, &value, &token, &token_set).join() {
-        //     println!("TOKEN • id: {:?} • value: {:?} • FROM SET: {:?}", id.id, value._current, token_set.id);
-        //     // Follow the reference (get token by name), and Set "value" to the referenced value.
-        // }
+        for (id, value, _, token_set) in (&identity, &value, &token, &token_set).join() {
+            println!("TOKEN • id: {:?} • value: {:?} • FROM SET: {:?}", id.id, value._current, token_set.id);
+            // Follow the reference (get token by name), and Set "value" to the referenced value.
+        }
     }
 }
 
