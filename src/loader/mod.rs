@@ -1,6 +1,6 @@
-use std::{error::Error};
 use std::fs;
 use std::collections::HashMap;
+use std::error::Error;
 use regex::Regex;
 use lazy_static::lazy_static;
 use colors_transform::{Rgb, Color};
@@ -178,10 +178,8 @@ impl Loader {
 		format!("--{}: {};", token.name.replace(".", "-"), value)
 	}
 
-	pub fn serialize(&self) -> HashMap<String, String> {
-		// Token sets is a map of name to a string containing all of the css for that token set.
-		let mut token_sets: HashMap<String, String> = HashMap::new();
-		
+	pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
+		// Loop over the token sets and create a CSS file for each
 		for (set_name, token_set) in &self.token_sets {
 			let mut value = String::new();
 			value.push_str(":root{");
@@ -204,36 +202,21 @@ impl Loader {
 
 			let _ = fs::write(format!("{}/{}.css", &self.out, set_name), value);
 		}
-		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
-
+		
+		// Iterate over the themes and create import statements for each included set.
 		for (name, sets) in &self.themes {
 			let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
+			println!("{:?}", set_names);
+			
+			let mut value = String::new();
 
-			let mut tokens: Vec<&TokenDefinition> = Vec::new();
-			for set_name in set_names {
-				let token_id_map = self.token_sets[&set_name].clone();
-
-				for (id, _) in token_id_map {
-					let token = &self.tokens.get(&id).unwrap();
-					tokens.push(*token);
-				}
+			for set in set_names {
+				value.push_str(format!("@import \"./{}.css\";", set).as_str());
 			}
 
-			themes.insert(name.clone(), tokens);
+			let _ = fs::write(format!("{}/{}.css", &self.out, name), value);
 		}
 
-		let mut output: HashMap<String, String> = HashMap::new();
-
-		for (theme_name, tokens) in themes {
-			let mut theme_str = String::new();
-			theme_str.push_str(":root{");
-			for token in tokens {
-				theme_str.push_str(self.serialize_token(&token).as_str());
-			}
-			theme_str.push_str("}");
-			output.insert(theme_name, theme_str);
-		}
-
-		output
+		Ok(())
 	}
 }
