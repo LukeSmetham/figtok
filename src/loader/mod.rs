@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fs::read_to_string;
 use std::collections::HashMap;
+use regex::Regex;
+use lazy_static::lazy_static;
 
 use crate::tokens::{TokenDefinition};
 
@@ -47,6 +49,7 @@ impl Loader {
 					// it's referenced value.
 					token = match token.value.starts_with("{") {
 						true => {
+							// todo!("Need to get the referenced values for tokens that use the handlebars syntax");
 							token
 						}
 						false => {
@@ -126,7 +129,36 @@ impl Loader {
 
 	// }
 
-	pub fn serialize_all(&self) -> HashMap<String, String> {
+	// vip == "Value in place"
+	pub fn enrich_token_value(&self, value: String, vip: bool) -> String {
+		lazy_static! {
+			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+		}
+
+		if RE.is_match(&value) {
+			let captures = RE.captures(&value).unwrap();
+
+			let ref_id = &captures[1];
+			let ref_token = &self.tokens.values().find(|t| t.name == ref_id);
+
+			match ref_token {
+				Some(t) => {
+					if !vip {
+						RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string()
+					} else {
+						RE.replace(&value.to_string(), t.value.clone()).to_string()
+					}
+				}
+				None => {
+					value
+				}
+			}
+		} else {
+			value
+		}
+	}
+
+	pub fn serialize_themes(&self) -> HashMap<String, String> {
 		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
 		
 		for (name, sets) in &self.themes {
@@ -138,7 +170,6 @@ impl Loader {
 
 				for (id, _) in token_id_map {
 					let token = &self.tokens.get(&id).unwrap();
-					// println!("{:?}", token);
 					tokens.push(*token);
 				}
 			}
@@ -152,7 +183,8 @@ impl Loader {
 			let mut theme_str = String::new();
 			theme_str.push_str(":root{");
 			for token in tokens {
-				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), token.value).as_str());
+				let value = self.enrich_token_value(token.value.clone(), true);
+				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), value).as_str());
 			}
 			theme_str.push_str("}");
 			output.insert(theme_name, theme_str);

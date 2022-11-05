@@ -14,7 +14,7 @@ fn main() {
 	let mut loader = Loader::new("./tokens");
 	loader.load().unwrap();
 
-	let items = loader.serialize_all();
+	let items = loader.serialize_themes();
 
 	fs::create_dir_all("./build").unwrap();
 	
