@@ -22,6 +22,7 @@ pub struct Loader {
 }
 impl Loader {
 	pub fn new(path: &str, out: &str) -> Loader {
+		fs::create_dir_all(out).unwrap();
 		Loader {
 			path: path.to_string(),
 			out: out.to_string(),
@@ -206,7 +207,6 @@ impl Loader {
 		// Iterate over the themes and create import statements for each included set.
 		for (name, sets) in &self.themes {
 			let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
-			println!("{:?}", set_names);
 			
 			let mut value = String::new();
 

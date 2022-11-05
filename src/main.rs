@@ -1,5 +1,3 @@
-use std::fs;
-
 use clap::Parser;
 
 #[macro_use]
