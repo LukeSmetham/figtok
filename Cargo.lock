@@ -248,7 +248,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "token-parser"
+name = "tokenparser"
 version = "0.1.0"
 dependencies = [
  "clap",

@@ -26,18 +26,18 @@ if (fs.existsSync(cargoDir)) {
   );
 }
     
-const binp = path.join(cargoDir, "bin", "token-parser");
+const binp = path.join(cargoDir, "bin", "tokenparser");
 
 if (fs.existsSync(binp)) {
-  console.log("Uninstalling token-parser...");
-  exec(`cargo uninstall token-parser`, (error, stdout, stderr) => {
+  console.log("Uninstalling tokenparser...");
+  exec(`cargo uninstall tokenparser`, (error, stdout, stderr) => {
     console.log(stdout);
     if (error || stderr) {
       console.log(error || stderr);
     }
   });
 } else {
-  console.log("token-parser not found skipping!");
+  console.log("tokenparser not found skipping!");
 }
     
     
