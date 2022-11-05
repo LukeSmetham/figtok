@@ -32,6 +32,50 @@ impl Loader {
 		}
 	}
 
+	pub fn load(&mut self) -> Result<(), Box<dyn Error>> {
+		let metadata_path = &mut self.path.clone();
+		metadata_path.push_str("/$metadata.json");
+		
+		let themes_path = &mut self.path.clone();
+		themes_path.push_str("/$themes.json");
+
+		// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
+		// all of the token sets in order, matching their positions in figma tokens UI.
+		let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&read_file(metadata_path).unwrap())?;
+
+		// Parse all of the tokens and token_sets recursively.
+		for entry in metadata.get("tokenSetOrder") {
+			for slug in entry {
+				// use the slug to create the path to the relevant JSON file.
+				let path = format!("./tokens/{}.json", slug);
+
+				// Read the file as a string, and insert into the files map
+				let file = read_file(&path)?;
+
+				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&file)?;
+				let mut prefix: Vec<String> = vec![];
+
+				let _ = &self.token_sets.insert(slug.clone(), HashMap::new());
+
+				let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
+			}
+		}
+
+		let themes: Vec<serde_json::Value> = serde_json::from_str(&read_file(themes_path).unwrap())?;
+		for theme in themes {
+			let value = theme.get("selectedTokenSets").unwrap().to_owned();
+
+			let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
+
+			let enabled_sets: HashMap<String, String> = token_sets.into_iter().filter(|(_, v)| v != "disabled").collect();
+
+			let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
+			let _ = &self.themes.insert(theme_name, enabled_sets);
+		}
+
+		Ok(())
+	}
+
 	/// Recursively iterate through the token JSON, and add the data to self.tokens
 	fn parse_token_set(&mut self, slug: &String, data: HashMap<String, serde_json::Value>, maybe_prefix: Option<&mut Vec<String>>) {
 		lazy_static! {
@@ -99,96 +143,6 @@ impl Loader {
 		}
 	}
 
-	pub fn load(&mut self) -> Result<(), Box<dyn Error>> {
-		let metadata_path = &mut self.path.clone();
-		metadata_path.push_str("/$metadata.json");
-		
-		let themes_path = &mut self.path.clone();
-		themes_path.push_str("/$themes.json");
-
-		// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
-		// all of the token sets in order, matching their positions in figma tokens UI.
-		let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&read_file(metadata_path).unwrap())?;
-
-		// Parse all of the tokens and token_sets recursively.
-		for entry in metadata.get("tokenSetOrder") {
-			for slug in entry {
-				// use the slug to create the path to the relevant JSON file.
-				let path = format!("./tokens/{}.json", slug);
-
-				// Read the file as a string, and insert into the files map
-				let file = read_file(&path)?;
-
-				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&file)?;
-				let mut prefix: Vec<String> = vec![];
-
-				let _ = &self.token_sets.insert(slug.clone(), HashMap::new());
-
-				let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
-			}
-		}
-
-		let themes: Vec<serde_json::Value> = serde_json::from_str(&read_file(themes_path).unwrap())?;
-		for theme in themes {
-			let value = theme.get("selectedTokenSets").unwrap().to_owned();
-
-			let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
-
-			let enabled_sets: HashMap<String, String> = token_sets.into_iter().filter(|(_, v)| v != "disabled").collect();
-
-			let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
-			let _ = &self.themes.insert(theme_name, enabled_sets);
-		}
-
-		Ok(())
-	}
-
-	/// Tests if a value is a static value or a reference. If static it's returned as is,
-	/// whereas if it's a reference we go and retrieve the token, and either set the value 
-	/// in place, or replace the handlebar reference string with css variable syntax depending 
-	/// on the replace_with_value arg.
-	fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
-		lazy_static! {
-			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
-		}
-
-		// Check if the value contains handlebar syntax with a reference to another token.
-		if RE.is_match(&value) {
-			let captures = RE.captures(&value).unwrap();
-
-			// Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
-			let ref_id = &captures[1];
-			let ref_token = &self.tokens.values().find(|t| t.name == ref_id);
-
-			match ref_token {
-				Some(t) => {
-					if !replace_with_value {
-						// Replace the reference string with a css variable that points to the other token.
-						let mut value = RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string();
-						if !&value.starts_with("rgb") {
-							value = format!("rgb({})", value);
-						}
-						value
-					} else {
-						// replace the reference string with the value of the referenced token statically.
-						RE.replace(&value.to_string(), t.value.clone()).to_string()
-					}
-				}
-				None => {
-					value
-				}
-			}
-		} else {
-			value
-		}
-	}
-
-	/// Take a single TokenDefinition, and serialize it to a CSS Variable string.
-	fn serialize_token(&self, token: &TokenDefinition) -> String {
-		let value = self.enrich_token_value(token.value.clone(), false);
-		format!("--{}: {};", token.name.replace(".", "-"), value)
-	}
-
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
 	/// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that 
 	/// can be imported individually by the user for more granularity, or if they don't use themes.
@@ -235,5 +189,51 @@ impl Loader {
 		}
 
 		Ok(())
+	}
+
+	/// Take a single TokenDefinition, and serialize it to a CSS Variable string.
+	fn serialize_token(&self, token: &TokenDefinition) -> String {
+		let value = self.enrich_token_value(token.value.clone(), false);
+		format!("--{}: {};", token.name.replace(".", "-"), value)
+	}
+
+	/// Tests if a value is a static value or a reference. If static it's returned as is,
+	/// whereas if it's a reference we go and retrieve the token, and either set the value 
+	/// in place, or replace the handlebar reference string with css variable syntax depending 
+	/// on the replace_with_value arg.
+	fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
+		lazy_static! {
+			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+		}
+
+		// Check if the value contains handlebar syntax with a reference to another token.
+		if RE.is_match(&value) {
+			let captures = RE.captures(&value).unwrap();
+
+			// Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
+			let ref_id = &captures[1];
+			let ref_token = &self.tokens.values().find(|t| t.name == ref_id);
+
+			match ref_token {
+				Some(t) => {
+					if !replace_with_value {
+						// Replace the reference string with a css variable that points to the other token.
+						let mut value = RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string();
+						if !&value.starts_with("rgb") {
+							value = format!("rgb({})", value);
+						}
+						value
+					} else {
+						// replace the reference string with the value of the referenced token statically.
+						RE.replace(&value.to_string(), t.value.clone()).to_string()
+					}
+				}
+				None => {
+					value
+				}
+			}
+		} else {
+			value
+		}
 	}
 }
