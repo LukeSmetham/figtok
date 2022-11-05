@@ -36,13 +36,6 @@ fn main() {
 
 	let mut loader = Loader::new(&args.dir, &args.out);
 	loader.load().unwrap();
-	// println!("{:?}", loader);
-	let items = loader.serialize();
 
-	// fs::create_dir_all(&args.out).unwrap();
-	
-	// for (name, value) in items {
-	// 	let name_parts: Vec<&str>  = name.split("/").map(|s| s.trim()).collect();
-	// 	let _ = fs::write(format!("{}/{}.css", &args.out, name_parts.join("-")), value);
-	// }
+	let _ = loader.serialize();
 }

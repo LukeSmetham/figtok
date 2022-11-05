@@ -1,0 +1,11 @@
+[
+  {
+    "id": "310e25c6bdfbc003649bf2ceff63701d566f4457",
+    "name": "light",
+    "selectedTokenSets": {
+      "global": "enabled",
+      "primitives/colors": "enabled"
+    },
+    "$figmaStyleReferences": {}
+  }
+]
