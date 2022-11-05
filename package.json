@@ -1,5 +1,5 @@
 {
-  "name": "figma-token-parser",
+  "name": "figma-tokens-parser",
   "version": "0.2.2",
   "description": "takes Figma Tokens JSON and outputs CSS",
   "main": "start.js",

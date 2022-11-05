@@ -15,14 +15,14 @@ yarn global add figma-token-parser
 
 You can also install this package via Cargo
 ```
-cargo install tokenparser
+cargo install figma-token-parser
 ```
 
 ## Usage
 ```bash
 # Below are the default values for the args, 
 # you can pass no args or use the dir and out args to suit your environment
-tokenparser --dir ./tokens --out ./build
+figma-token-parser --dir ./tokens --out ./build
 ```
 
 ## TODO
