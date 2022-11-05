@@ -45,7 +45,7 @@ impl Loader {
 					// If so, because of the tokenSetOrder we can ensure that this token
 					// has already been parsed, so we can enrich this token definition with
 					// it's referenced value.
-					token = match token.value.contains("{") {
+					token = match token.value.starts_with("{") {
 						true => {
 							token
 						}
@@ -136,7 +136,7 @@ impl Loader {
 			for set_name in set_names {
 				let token_id_map = self.token_sets[&set_name].clone();
 
-				for (id, name) in token_id_map {
+				for (id, _) in token_id_map {
 					let token = &self.tokens.get(&id).unwrap();
 					// println!("{:?}", token);
 					tokens.push(*token);
