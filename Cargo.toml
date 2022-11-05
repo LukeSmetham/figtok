@@ -13,3 +13,4 @@ serde_derive = "*"
 regex = "1"
 lazy_static = "1.4.0"
 colors-transform = "0.2.4"
+clap = { version = "4.0.19", features = ["derive"] }
