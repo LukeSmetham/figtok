@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use clap::Parser;
 
 #[macro_use]
@@ -30,6 +32,11 @@ fn main() {
 
 	if args.format != "css" {
 		panic!("Outputting your tokens to {} is not yet supported.", args.format);
+	}
+	
+	// Check if the input directory exists
+	if !Path::new(&args.dir).is_dir() {
+		panic!("No {} directory found, passed as input directory", args.dir);
 	}
 
 	let mut loader = Loader::new(&args.dir, &args.out);
