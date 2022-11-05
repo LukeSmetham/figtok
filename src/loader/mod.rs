@@ -12,13 +12,15 @@ fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
 #[derive(Debug)]
 pub struct Loader {
 	path: String,
-	tokens: Vec<TokenDefinition>
+	pub tokens: Vec<TokenDefinition>,
+	pub token_sets: HashMap<String, HashMap<String, String>>,
 }
 impl Loader {
 	pub fn new(path: &str) -> Loader {
 		Loader {
 			path: path.to_string(),
 			tokens: Vec::new(),
+			token_sets: HashMap::new(),
 		}
 	}
 
@@ -55,13 +57,20 @@ impl Loader {
 					let id_parts = vec![slug.split("/").collect::<Vec<&str>>().join("."), token.name.clone()];
 					token.id = id_parts.join(".");
 					
-					&self.tokens.push(token);
+					// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
+					// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
+					let _ = &self.token_sets.entry(slug.to_string()).and_modify(|v| {
+						v.insert(token.id.clone(), token.name.clone());
+					});
+
+					let _ = &self.tokens.push(token);
 				}
 				None => {
 					// If the "type" property is not present, we have a nested object
 					let nested_data: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
 					let mut new_prefix = id.clone();
-					&self.parse_token_set(slug, nested_data, Some(&mut new_prefix));
+
+					let _ = &self.parse_token_set(slug, nested_data, Some(&mut new_prefix));
 				}
 			}
 		}
@@ -87,6 +96,8 @@ impl Loader {
 
 				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&file)?;
 				let mut prefix: Vec<String> = vec![];
+
+				&self.token_sets.insert(slug.clone(), HashMap::new());
 
 				&self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
 			}

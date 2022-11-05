@@ -11,5 +11,5 @@ use loader::Loader;
 fn main() {
 	let mut loader = Loader::new("./tokens");
 	loader.load().unwrap();
-	println!("loader: {:?}", loader);
+	println!("loader: {:?}", loader.token_sets);
 }
