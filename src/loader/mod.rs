@@ -1,10 +1,11 @@
-use std::error::Error;
+use std::{error::Error};
 use std::fs::read_to_string;
 use std::collections::HashMap;
 use regex::Regex;
 use lazy_static::lazy_static;
+use colors_transform::{Rgb, Color};
 
-use crate::tokens::{TokenDefinition};
+use crate::tokens::{TokenDefinition, TokenKind};
 
 fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
     let data = read_to_string(filepath)?;
@@ -16,7 +17,7 @@ pub struct Loader {
 	path: String,
 	pub tokens: HashMap<String, TokenDefinition>,
 	pub token_sets: HashMap<String, HashMap<String, String>>,
-	pub themes: HashMap<String, HashMap<String, String>>,
+	pub themes: HashMap<String, HashMap<String, String>>
 }
 impl Loader {
 	pub fn new(path: &str) -> Loader {
@@ -29,6 +30,10 @@ impl Loader {
 	}
 
 	pub fn parse_token_set(&mut self, slug: &String, data: HashMap<String, serde_json::Value>, maybe_prefix: Option<&mut Vec<String>>) {
+		lazy_static! {
+			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+		}
+
 		let prefix = maybe_prefix.unwrap();
 
 		for (key, value) in data {
@@ -41,18 +46,21 @@ impl Loader {
 					// If the "type" property is present, we have a token definition
 					let mut token: TokenDefinition = serde_json::from_value(value).unwrap();
 
-					// This can definitely be improved as far as a more robust check,
-					// but we check here if the token value contains a reference to 
-					// another token.
-					// If so, because of the tokenSetOrder we can ensure that this token
-					// has already been parsed, so we can enrich this token definition with
-					// it's referenced value.
-					token = match token.value.starts_with("{") {
-						true => {
-							// todo!("Need to get the referenced values for tokens that use the handlebars syntax");
+					// do any transformations per token kind
+					token = match token.kind {
+						TokenKind::Color => {
+							// if the token is not a reference to another token,
+							// then convert it to rgb.
+							if !RE.is_match(&token.value) {
+								let rgb = Rgb::from_hex_str(&token.value).unwrap();
+								token.value = format!("{}, {}, {}", rgb.get_red(), rgb.get_green(), rgb.get_blue());
+							}
 							token
-						}
-						false => {
+						},
+						TokenKind::BorderRadius => {
+							token
+						},
+						TokenKind::FontFamily => {
 							token
 						}
 					};
@@ -126,7 +134,7 @@ impl Loader {
 	}
 
 	// vip == "Value in place"
-	pub fn enrich_token_value(&self, value: String, vip: bool) -> String {
+	pub fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
 		lazy_static! {
 			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
 		}
@@ -139,8 +147,12 @@ impl Loader {
 
 			match ref_token {
 				Some(t) => {
-					if !vip {
-						RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string()
+					if !replace_with_value {
+						let mut value = RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string();
+						if !&value.starts_with("rgb") {
+							value = format!("rgb({})", value);
+						}
+						value
 					} else {
 						RE.replace(&value.to_string(), t.value.clone()).to_string()
 					}

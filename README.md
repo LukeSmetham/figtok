@@ -15,3 +15,6 @@ struct TokenDefinition {
     kind: String,
 }
 ```
+
+## TODO
+- [ ] Devise a way to output the source sets and enabled sets separately. We will want to also keep track of the source sets we have already processed so that we only handle them once (multiple themes may use the same source sets.) Consider also some kind of index file that `@import` all of the individual sets per-theme with the option to include all, namespaced by a class name on `:root`
