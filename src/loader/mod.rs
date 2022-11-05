@@ -171,7 +171,7 @@ impl Loader {
 		}
 	}
 
-	pub fn serialize_themes(&self) -> HashMap<String, String> {
+	pub fn serialize(&self) -> HashMap<String, String> {
 		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
 		
 		for (name, sets) in &self.themes {
