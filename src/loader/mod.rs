@@ -12,7 +12,7 @@ fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
 #[derive(Debug)]
 pub struct Loader {
 	path: String,
-	pub tokens: Vec<TokenDefinition>,
+	pub tokens: HashMap<String, TokenDefinition>,
 	pub token_sets: HashMap<String, HashMap<String, String>>,
 	pub themes: HashMap<String, HashMap<String, String>>,
 }
@@ -20,7 +20,7 @@ impl Loader {
 	pub fn new(path: &str) -> Loader {
 		Loader {
 			path: path.to_string(),
-			tokens: Vec::new(),
+			tokens: HashMap::new(),
 			token_sets: HashMap::new(),
 			themes: HashMap::new()
 		}
@@ -65,7 +65,7 @@ impl Loader {
 						v.insert(token.id.clone(), token.name.clone());
 					});
 
-					let _ = &self.tokens.push(token);
+					let _ = &self.tokens.insert(token.id.clone(), token);
 				}
 				None => {
 					// If the "type" property is not present, we have a nested object
@@ -120,5 +120,44 @@ impl Loader {
 		}
 
 		Ok(())
+	}
+
+	// fn serialize(&self, theme: &str) -> String {
+
+	// }
+
+	pub fn serialize_all(&self) -> Vec<String> {
+		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
+		
+		for (name, sets) in &self.themes {
+			let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
+
+			let mut tokens: Vec<&TokenDefinition> = Vec::new();
+			for set_name in set_names {
+				let token_id_map = self.token_sets[&set_name].clone();
+
+				for (id, name) in token_id_map {
+					let token = &self.tokens.get(&id).unwrap();
+					// println!("{:?}", token);
+					tokens.push(*token);
+				}
+			}
+
+			themes.insert(name.clone(), tokens);
+		}
+
+		let mut output: Vec<String> = Vec::new();
+
+		for (name, tokens) in themes {
+			let mut theme_str = String::new();
+			theme_str.push_str(":root{");
+			for token in tokens {
+				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), token.value).as_str());
+			}
+			theme_str.push_str("}");
+			output.push(theme_str);
+		}
+
+		output
 	}
 }
