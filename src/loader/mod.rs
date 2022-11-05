@@ -32,7 +32,8 @@ impl Loader {
 		}
 	}
 
-	pub fn parse_token_set(&mut self, slug: &String, data: HashMap<String, serde_json::Value>, maybe_prefix: Option<&mut Vec<String>>) {
+	/// Recursively iterate through the token JSON, and add the data to self.tokens
+	fn parse_token_set(&mut self, slug: &String, data: HashMap<String, serde_json::Value>, maybe_prefix: Option<&mut Vec<String>>) {
 		lazy_static! {
 			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
 		}
@@ -142,26 +143,34 @@ impl Loader {
 		Ok(())
 	}
 
-	pub fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
+	/// Tests if a value is a static value or a reference. If static it's returned as is,
+	/// whereas if it's a reference we go and retrieve the token, and either set the value 
+	/// in place, or replace the handlebar reference string with css variable syntax depending 
+	/// on the replace_with_value arg.
+	fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
 		lazy_static! {
 			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
 		}
 
+		// Check if the value contains handlebar syntax with a reference to another token.
 		if RE.is_match(&value) {
 			let captures = RE.captures(&value).unwrap();
 
+			// Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
 			let ref_id = &captures[1];
 			let ref_token = &self.tokens.values().find(|t| t.name == ref_id);
 
 			match ref_token {
 				Some(t) => {
 					if !replace_with_value {
+						// Replace the reference string with a css variable that points to the other token.
 						let mut value = RE.replace(&value.to_string(), format!("var(--{})", t.name.clone().replace(".", "-"))).to_string();
 						if !&value.starts_with("rgb") {
 							value = format!("rgb({})", value);
 						}
 						value
 					} else {
+						// replace the reference string with the value of the referenced token statically.
 						RE.replace(&value.to_string(), t.value.clone()).to_string()
 					}
 				}
@@ -174,11 +183,15 @@ impl Loader {
 		}
 	}
 
+	/// Take a single TokenDefinition, and serialize it to a CSS Variable string.
 	fn serialize_token(&self, token: &TokenDefinition) -> String {
 		let value = self.enrich_token_value(token.value.clone(), false);
 		format!("--{}: {};", token.name.replace(".", "-"), value)
 	}
 
+	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
+	/// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that 
+	/// can be imported individually by the user for more granularity, or if they don't use themes.
 	pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
 		// Loop over the token sets and create a CSS file for each
 		for (set_name, token_set) in &self.token_sets {
@@ -200,7 +213,6 @@ impl Loader {
 			};
 
 			fs::create_dir_all(vec![self.out.clone(), dir.to_string()].join("/")).unwrap();
-
 			let _ = fs::write(format!("{}/{}.css", &self.out, set_name), value);
 		}
 		
