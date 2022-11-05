@@ -43,4 +43,6 @@ fn main() {
 	loader.load().unwrap();
 
 	let _ = loader.serialize();
+
+	println!("Done! Check {} for the output CSS", args.out);
 }
