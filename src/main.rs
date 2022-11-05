@@ -30,6 +30,10 @@ struct Args {
 fn main() {
 	let args = Args::parse();
 
+	if args.format != "css" {
+		panic!("Outputting your tokens to {} is not yet supported.", args.format);
+	}
+
 	let mut loader = Loader::new(&args.dir);
 	loader.load().unwrap();
 
