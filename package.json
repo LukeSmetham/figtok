@@ -1,7 +1,7 @@
 {
-  "name": "figma-token-parser",
-  "version": "0.2.0",
-  
+  "name": "tokenparser",
+  "version": "0.2.1",
+  "description": "takes Figma Tokens JSON and outputs CSS",
   "main": "start.js",
   "directories": {
     "test": "tests"
@@ -13,7 +13,7 @@
   },
   "keywords": [],
   
-  "license": "ISC",
+  "license": "MIT",
   "files": [
     "pre-install.js",
     "start.js",
