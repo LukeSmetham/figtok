@@ -1,5 +1,5 @@
 use std::{error::Error};
-use std::fs::read_to_string;
+use std::fs;
 use std::collections::HashMap;
 use regex::Regex;
 use lazy_static::lazy_static;
@@ -8,21 +8,23 @@ use colors_transform::{Rgb, Color};
 use crate::tokens::{TokenDefinition, TokenKind};
 
 fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
-    let data = read_to_string(filepath)?;
+    let data = fs::read_to_string(filepath)?;
     Ok(data)
 }
 
 #[derive(Debug)]
 pub struct Loader {
 	path: String,
+	out: String,
 	pub tokens: HashMap<String, TokenDefinition>,
 	pub token_sets: HashMap<String, HashMap<String, String>>,
 	pub themes: HashMap<String, HashMap<String, String>>
 }
 impl Loader {
-	pub fn new(path: &str) -> Loader {
+	pub fn new(path: &str, out: &str) -> Loader {
 		Loader {
 			path: path.to_string(),
+			out: out.to_string(),
 			tokens: HashMap::new(),
 			token_sets: HashMap::new(),
 			themes: HashMap::new()
@@ -177,16 +179,31 @@ impl Loader {
 	}
 
 	pub fn serialize(&self) -> HashMap<String, String> {
-
+		// Token sets is a map of name to a string containing all of the css for that token set.
+		let mut token_sets: HashMap<String, String> = HashMap::new();
+		
 		for (set_name, token_set) in &self.token_sets {
-			println!("{}", set_name);
-			for (id, name) in token_set {
+			let mut value = String::new();
+			value.push_str(":root{");
+			for (id, _) in token_set {
 				let token = &self.tokens[id];
-				println!("{:?}", self.serialize_token(token));
+				value.push_str(self.serialize_token(token).as_str());
 			}
+			value.push_str("}");
+
+			let dir = match set_name.rsplit_once("/") {
+				Some((d, _)) => {
+					d
+				},
+				None => {
+					""
+				}
+			};
+
+			fs::create_dir_all(vec![self.out.clone(), dir.to_string()].join("/")).unwrap();
+
+			let _ = fs::write(format!("{}/{}.css", &self.out, set_name), value);
 		}
-
-
 		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
 
 		for (name, sets) in &self.themes {
