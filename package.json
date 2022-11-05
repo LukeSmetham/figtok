@@ -1,5 +1,5 @@
 {
-  "name": "tokenparser",
+  "name": "figma-token-parser",
   "version": "0.1.0",
   
   "main": "start.js",
