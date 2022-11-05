@@ -72,8 +72,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9226dbc05df4fb986f48d730b001532580883c4c06c5d1c213f4b34c1c157178"
 
 [[package]]
-name = "figma-token-parser"
-version = "0.2.4"
+name = "figtok"
+version = "0.1.0"
 dependencies = [
  "clap",
  "colors-transform",

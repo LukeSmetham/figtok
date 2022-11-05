@@ -26,18 +26,18 @@ if (fs.existsSync(cargoDir)) {
   );
 }
     
-const binp = path.join(cargoDir, "bin", "figma-token-parser");
+const binp = path.join(cargoDir, "bin", "figtok");
 
 if (fs.existsSync(binp)) {
-  console.log("Uninstalling figma-token-parser...");
-  exec(`cargo uninstall figma-token-parser`, (error, stdout, stderr) => {
+  console.log("Uninstalling figtok...");
+  exec(`cargo uninstall figtok`, (error, stdout, stderr) => {
     console.log(stdout);
     if (error || stderr) {
       console.log(error || stderr);
     }
   });
 } else {
-  console.log("figma-token-parser not found skipping!");
+  console.log("figtok not found skipping!");
 }
     
     

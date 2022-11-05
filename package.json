@@ -1,6 +1,6 @@
 {
-  "name": "figma-token-parser",
-  "version": "0.2.4",
+  "name": "figtok",
+  "version": "0.1.0",
   "description": "takes Figma Tokens JSON and outputs CSS",
   "main": "start.js",
   "directories": {
