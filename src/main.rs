@@ -1,5 +1,3 @@
-use std::fs;
-
 use clap::Parser;
 
 #[macro_use]
@@ -34,15 +32,8 @@ fn main() {
 		panic!("Outputting your tokens to {} is not yet supported.", args.format);
 	}
 
-	let mut loader = Loader::new(&args.dir);
+	let mut loader = Loader::new(&args.dir, &args.out);
 	loader.load().unwrap();
 
-	let items = loader.serialize_themes();
-
-	fs::create_dir_all(&args.out).unwrap();
-	
-	for (name, value) in items {
-		let name_parts: Vec<&str>  = name.split("/").map(|s| s.trim()).collect();
-		let _ = fs::write(format!("{}/{}.css", &args.out, name_parts.join("-")), value);
-	}
+	let _ = loader.serialize();
 }

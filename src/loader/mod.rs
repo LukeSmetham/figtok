@@ -1,6 +1,6 @@
-use std::{error::Error};
-use std::fs::read_to_string;
+use std::fs;
 use std::collections::HashMap;
+use std::error::Error;
 use regex::Regex;
 use lazy_static::lazy_static;
 use colors_transform::{Rgb, Color};
@@ -8,21 +8,24 @@ use colors_transform::{Rgb, Color};
 use crate::tokens::{TokenDefinition, TokenKind};
 
 fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
-    let data = read_to_string(filepath)?;
+    let data = fs::read_to_string(filepath)?;
     Ok(data)
 }
 
 #[derive(Debug)]
 pub struct Loader {
 	path: String,
+	out: String,
 	pub tokens: HashMap<String, TokenDefinition>,
 	pub token_sets: HashMap<String, HashMap<String, String>>,
 	pub themes: HashMap<String, HashMap<String, String>>
 }
 impl Loader {
-	pub fn new(path: &str) -> Loader {
+	pub fn new(path: &str, out: &str) -> Loader {
+		fs::create_dir_all(out).unwrap();
 		Loader {
 			path: path.to_string(),
+			out: out.to_string(),
 			tokens: HashMap::new(),
 			token_sets: HashMap::new(),
 			themes: HashMap::new()
@@ -61,6 +64,12 @@ impl Loader {
 							token
 						},
 						TokenKind::FontFamily => {
+							token
+						}
+						TokenKind::Spacing => {
+							token
+						}
+						TokenKind::Other => {
 							token
 						}
 					};
@@ -133,7 +142,6 @@ impl Loader {
 		Ok(())
 	}
 
-	// vip == "Value in place"
 	pub fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
 		lazy_static! {
 			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
@@ -166,38 +174,54 @@ impl Loader {
 		}
 	}
 
-	pub fn serialize_themes(&self) -> HashMap<String, String> {
-		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
+	fn serialize_token(&self, token: &TokenDefinition) -> String {
+		let value = self.enrich_token_value(token.value.clone(), false);
+		format!("--{}: {};", token.name.replace(".", "-"), value)
+	}
+
+	pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
+		// Loop over the token sets and create a CSS file for each
+		for (set_name, token_set) in &self.token_sets {
+			let mut value = String::new();
+			value.push_str(":root{");
+			for (id, _) in token_set {
+				let token = &self.tokens[id];
+				value.push_str(self.serialize_token(token).as_str());
+			}
+			value.push_str("}");
+
+			let dir = match set_name.rsplit_once("/") {
+				Some((d, _)) => {
+					d
+				},
+				None => {
+					""
+				}
+			};
+
+			fs::create_dir_all(vec![self.out.clone(), dir.to_string()].join("/")).unwrap();
+
+			let _ = fs::write(format!("{}/{}.css", &self.out, set_name), value);
+		}
 		
+		// Iterate over the themes and create import statements for each included set.
 		for (name, sets) in &self.themes {
 			let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
+			
+			let mut value = String::new();
 
-			let mut tokens: Vec<&TokenDefinition> = Vec::new();
-			for set_name in set_names {
-				let token_id_map = self.token_sets[&set_name].clone();
-
-				for (id, _) in token_id_map {
-					let token = &self.tokens.get(&id).unwrap();
-					tokens.push(*token);
-				}
+			for set in set_names {
+				value.push_str(format!("@import \"./{}.css\";", set).as_str());
 			}
 
-			themes.insert(name.clone(), tokens);
+			
+			// Themes must be output to the top level so that the import paths work
+			// we can probably work around this if we want as things improve.
+
+			let name_parts: Vec<&str>  = name.split("/").map(|s| s.trim()).collect();
+			let _ = fs::write(format!("{}/{}.css", &self.out, name_parts.join("-")), value);
 		}
 
-		let mut output: HashMap<String, String> = HashMap::new();
-
-		for (theme_name, tokens) in themes {
-			let mut theme_str = String::new();
-			theme_str.push_str(":root{");
-			for token in tokens {
-				let value = self.enrich_token_value(token.value.clone(), false);
-				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), value).as_str());
-			}
-			theme_str.push_str("}");
-			output.insert(theme_name, theme_str);
-		}
-
-		output
+		Ok(())
 	}
 }
