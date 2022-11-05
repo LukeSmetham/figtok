@@ -63,6 +63,12 @@ impl Loader {
 						TokenKind::FontFamily => {
 							token
 						}
+						TokenKind::Spacing => {
+							token
+						}
+						TokenKind::Other => {
+							token
+						}
 					};
 
 					token.name = id.join(".");
@@ -133,7 +139,6 @@ impl Loader {
 		Ok(())
 	}
 
-	// vip == "Value in place"
 	pub fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
 		lazy_static! {
 			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();

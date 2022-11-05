@@ -6,6 +6,10 @@ pub enum TokenKind {
     Color,
     #[serde(alias = "fontFamilies")]
     FontFamily,
+    #[serde(alias = "spacing")]
+    Spacing,
+    #[serde(alias = "other")]
+    Other,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

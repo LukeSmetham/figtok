@@ -36,7 +36,7 @@ fn main() {
 
 	let mut loader = Loader::new(&args.dir);
 	loader.load().unwrap();
-
+	println!("{:?}", loader);
 	let items = loader.serialize_themes();
 
 	fs::create_dir_all(&args.out).unwrap();
