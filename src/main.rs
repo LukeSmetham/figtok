@@ -12,6 +12,9 @@ mod tokens;
 mod loader;
 use loader::Loader;
 
+mod serialize;
+use serialize::CssSerializer;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -42,7 +45,8 @@ fn main() {
 	let mut loader = Loader::new(&args.dir, &args.out);
 	loader.load().unwrap();
 
-	let _ = loader.serialize();
+	let serializer = CssSerializer::new(loader);
+	let _ = serializer.serialize();
 
 	println!("Done! Check {} for the output CSS", args.out);
 }
