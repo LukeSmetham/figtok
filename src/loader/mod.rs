@@ -14,6 +14,7 @@ pub struct Loader {
 	path: String,
 	pub tokens: Vec<TokenDefinition>,
 	pub token_sets: HashMap<String, HashMap<String, String>>,
+	pub themes: HashMap<String, HashMap<String, String>>,
 }
 impl Loader {
 	pub fn new(path: &str) -> Loader {
@@ -21,6 +22,7 @@ impl Loader {
 			path: path.to_string(),
 			tokens: Vec::new(),
 			token_sets: HashMap::new(),
+			themes: HashMap::new()
 		}
 	}
 
@@ -77,15 +79,17 @@ impl Loader {
 	}
 
 	pub fn load(&mut self) -> Result<(), Box<dyn Error>> {
-		let entry_path = &mut self.path.clone();
-		entry_path.push_str("/$metadata.json");
-
-		let string = read_file(entry_path).unwrap();
+		let metadata_path = &mut self.path.clone();
+		metadata_path.push_str("/$metadata.json");
+		
+		let themes_path = &mut self.path.clone();
+		themes_path.push_str("/$themes.json");
 
 		// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
 		// all of the token sets in order, matching their positions in figma tokens UI.
-		let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&string)?;
+		let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&read_file(metadata_path).unwrap())?;
 
+		// Parse all of the tokens and token_sets recursively.
 		for entry in metadata.get("tokenSetOrder") {
 			for slug in entry {
 				// use the slug to create the path to the relevant JSON file.
@@ -97,10 +101,22 @@ impl Loader {
 				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&file)?;
 				let mut prefix: Vec<String> = vec![];
 
-				&self.token_sets.insert(slug.clone(), HashMap::new());
+				let _ = &self.token_sets.insert(slug.clone(), HashMap::new());
 
-				&self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
+				let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
 			}
+		}
+
+		let themes: Vec<serde_json::Value> = serde_json::from_str(&read_file(themes_path).unwrap())?;
+		for theme in themes {
+			let value = theme.get("selectedTokenSets").unwrap().to_owned();
+
+			let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
+
+			let enabled_sets: HashMap<String, String> = token_sets.into_iter().filter(|(_, v)| v != "disabled").collect();
+
+			let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
+			let _ = &self.themes.insert(theme_name, enabled_sets);
 		}
 
 		Ok(())
