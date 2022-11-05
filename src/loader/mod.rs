@@ -171,9 +171,24 @@ impl Loader {
 		}
 	}
 
+	fn serialize_token(&self, token: &TokenDefinition) -> String {
+		let value = self.enrich_token_value(token.value.clone(), false);
+		format!("--{}: {};", token.name.replace(".", "-"), value)
+	}
+
 	pub fn serialize(&self) -> HashMap<String, String> {
+
+		for (set_name, token_set) in &self.token_sets {
+			println!("{}", set_name);
+			for (id, name) in token_set {
+				let token = &self.tokens[id];
+				println!("{:?}", self.serialize_token(token));
+			}
+		}
+
+
 		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
-		
+
 		for (name, sets) in &self.themes {
 			let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
 
@@ -196,8 +211,7 @@ impl Loader {
 			let mut theme_str = String::new();
 			theme_str.push_str(":root{");
 			for token in tokens {
-				let value = self.enrich_token_value(token.value.clone(), false);
-				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), value).as_str());
+				theme_str.push_str(self.serialize_token(&token).as_str());
 			}
 			theme_str.push_str("}");
 			output.insert(theme_name, theme_str);
