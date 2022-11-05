@@ -1,6 +1,8 @@
 # Token Parser
 Consumes Figma Tokens JSON files, and outputs CSS.
 
+You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and then have `figma-token-parser` run in a GH action. Then on each update you get the updated CSS files outputted to a particular location. This would enable you to update styles in Figma, push changes from the UI, and have the updates automatically propagate to your live site/app/whatever.
+
 > This project is in a super-WIP state currently and probably won't work for you. It's only really guaranteed to work with Figma Tokens Pro, and if you use the "multiple files" option that splits your tokens into separate json files in directories instead of one huge json file. It also relies solely on FT's Themes feature right now and has only one command, where it will export a CSS file for each theme in your Figma Tokens setup. I plan to add more functionality in the future to allow for more configurable output, or the option to dump all tokens in one css file (including namespaced values via class name to retain theme support in this setup - see TODOs below.)
 
 
