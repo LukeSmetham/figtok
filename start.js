@@ -5,7 +5,7 @@ const { exec } = require("child_process");
 const controller = typeof AbortController !== "undefined" ? new AbortController() : { abort: () => {} };
 const { signal } = controller;
 
-exec("figma-tokens-parser", { signal }, (error, stdout, stderr) => {
+exec("figma-token-parser", { signal }, (error, stdout, stderr) => {
   stdout && console.log(stdout);
   stderr && console.error(stderr);
   if (error !== null) {

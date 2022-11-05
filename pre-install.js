@@ -28,8 +28,8 @@ if (fs.existsSync(cargoDir)) {
     
 const features = process.env.npm_config_features ? `--features ${process.env.npm_config_features.replace(",", " ")}` : ""; 
 
-console.log(`Installing and compiling figma-tokens-parser 0.2.3 ${features} ...`);
-exec(`cargo install figma-tokens-parser --vers 0.2.3 ${features}`, (error, stdout, stderr) => {
+console.log(`Installing and compiling figma-token-parser 0.2.4 ${features} ...`);
+exec(`cargo install figma-token-parser --vers 0.2.4 ${features}`, (error, stdout, stderr) => {
   console.log(stdout);
   if (error || stderr) {
     console.log(error || stderr);
