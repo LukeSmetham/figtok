@@ -125,10 +125,6 @@ impl Loader {
 		Ok(())
 	}
 
-	// fn serialize(&self, theme: &str) -> String {
-
-	// }
-
 	// vip == "Value in place"
 	pub fn enrich_token_value(&self, value: String, vip: bool) -> String {
 		lazy_static! {
@@ -183,7 +179,7 @@ impl Loader {
 			let mut theme_str = String::new();
 			theme_str.push_str(":root{");
 			for token in tokens {
-				let value = self.enrich_token_value(token.value.clone(), true);
+				let value = self.enrich_token_value(token.value.clone(), false);
 				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), value).as_str());
 			}
 			theme_str.push_str("}");

@@ -19,7 +19,7 @@ fn main() {
 	fs::create_dir_all("./build").unwrap();
 	
 	for (name, value) in items {
-		fs::create_dir_all(format!("./build/{}", name)).unwrap();
-		let _ = fs::write(format!("./build/{}.css", name), value);
+		let name_parts: Vec<&str>  = name.split("/").map(|s| s.trim()).collect();
+		let _ = fs::write(format!("./build/{}.css", name_parts.join("-")), value);
 	}
 }
