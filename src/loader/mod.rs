@@ -126,7 +126,7 @@ impl Loader {
 
 	// }
 
-	pub fn serialize_all(&self) -> Vec<String> {
+	pub fn serialize_all(&self) -> HashMap<String, String> {
 		let mut themes: HashMap<String, Vec<&TokenDefinition>> = HashMap::new();
 		
 		for (name, sets) in &self.themes {
@@ -146,16 +146,16 @@ impl Loader {
 			themes.insert(name.clone(), tokens);
 		}
 
-		let mut output: Vec<String> = Vec::new();
+		let mut output: HashMap<String, String> = HashMap::new();
 
-		for (name, tokens) in themes {
+		for (theme_name, tokens) in themes {
 			let mut theme_str = String::new();
 			theme_str.push_str(":root{");
 			for token in tokens {
 				theme_str.push_str(format!("--{}: {};", token.name.replace(".", "-"), token.value).as_str());
 			}
 			theme_str.push_str("}");
-			output.push(theme_str);
+			output.insert(theme_name, theme_str);
 		}
 
 		output

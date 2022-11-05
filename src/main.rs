@@ -18,5 +18,9 @@ fn main() {
 	println!("Done {:?}", items);
 
 	fs::create_dir_all("./build").unwrap();
-	fs::write("./build/output.css", items.get(0).unwrap());
+	
+	for (name, value) in items {
+		fs::create_dir_all(format!("./build/{}", name)).unwrap();
+		fs::write(format!("./build/{}.css", name), value);
+	}
 }
