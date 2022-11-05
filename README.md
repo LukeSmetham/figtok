@@ -1,28 +1,28 @@
-# Token Parser
+# FigTok
 Consumes Figma Tokens JSON files, and outputs CSS.
 
-You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and then have `figma-token-parser` run in a GH action. Then on each update you get the updated CSS files outputted to a particular location. This would enable you to update styles in Figma, push changes from the UI, and have the updates automatically propagate to your live site/app/whatever.
+You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and then have `figtok` run in a GH action. Then on each update you get the updated CSS files outputted to a particular location. This would enable you to update styles in Figma, push changes from the UI, and have the updates automatically propagate to your live site/app/whatever.
 
 > This project is in a super-WIP state currently and probably won't work for you. It's only really guaranteed to work with Figma Tokens Pro, and if you use the "multiple files" option that splits your tokens into separate json files in directories instead of one huge json file. (see TODOs below.)
 
 
 ## Installation
 ```bash
-yarn add -D figma-token-parser
+yarn add -D figtok
 ## or
-yarn global add figma-token-parser
+yarn global add figtok
 ```
 
 You can also install this package via Cargo
 ```
-cargo install figma-token-parser
+cargo install figtok
 ```
 
 ## Usage
 ```bash
 # Below are the default values for the args, 
 # you can pass no args or use the dir and out args to suit your environment
-figma-token-parser --dir ./tokens --out ./build
+figtok --dir ./tokens --out ./build
 ```
 
 ## TODO

@@ -1,6 +1,6 @@
 [package]
 name = "figtok"
-description = "takes Figma Tokens JSON and outputs CSS"
+description = "Takes Figma Tokens JSON output and converts it to valid composable CSS."
 license = "MIT"
 version = "0.1.0"
 edition = "2021"
