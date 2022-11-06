@@ -73,6 +73,7 @@ impl Loader {
                         }
                         TokenKind::BorderRadius => token,
                         TokenKind::FontFamily => token,
+						TokenKind::LetterSpacing => token,
                         TokenKind::Spacing => token,
                         TokenKind::Other => token,
                     };

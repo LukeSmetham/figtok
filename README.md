@@ -5,6 +5,9 @@ You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and th
 
 > This project is in a super-WIP state currently and probably won't work for you. It's only really guaranteed to work with Figma Tokens Pro, and if you use the "multiple files" option that splits your tokens into separate json files in directories instead of one huge json file. (see TODOs below.)
 
+### Gotchas
+- If you're not using Figma Tokens "Themes," and just have Token Sets, you need to remember to import all of the necessary css files so that the variable-based values still work. (i.e. if you have a "light" set that also depends on some "global" set tokens, you need to also @import the global set for the light set to work properly.)
+
 
 ## Installation
 ```bash
