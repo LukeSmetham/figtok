@@ -74,8 +74,8 @@ impl Loader {
                         TokenKind::BorderRadius => token,
                         TokenKind::FontFamily => token,
                         TokenKind::FontSize => token,
-						TokenKind::LetterSpacing => token,
-						TokenKind::LineHeight => token,
+                        TokenKind::LetterSpacing => token,
+                        TokenKind::LineHeight => token,
                         TokenKind::Spacing => token,
                         TokenKind::Other => token,
                     };
@@ -135,15 +135,15 @@ impl Loader {
                     Err(error) => panic!("Problem opening the file: {:?}", error),
                 };
 
-				// Prefix will hold individual portions of the property name, if a value is accessible at 
-				// colors.red.1 then prefix will eventually contain ["colors", "red", "1"] after it has 
-				// recursed through the JSON.
+                // Prefix will hold individual portions of the property name, if a value is accessible at
+                // colors.red.1 then prefix will eventually contain ["colors", "red", "1"] after it has
+                // recursed through the JSON.
                 let mut prefix: Vec<String> = vec![];
 
-				// Insert a blank token set.
+                // Insert a blank token set.
                 let _ = &self.token_sets.insert(slug.clone(), Vec::new());
 
-				// Parse the token set
+                // Parse the token set
                 let _ = &self.parse_token_set(&slug.to_string(), file, Some(&mut prefix));
             }
         }
@@ -156,12 +156,15 @@ impl Loader {
         // Use themes_path to get the $themes.json file with serde
         let themes: Vec<serde_json::Value> =
             match serde_json::from_str(&read_file(themes_path).unwrap()) {
-                Ok(t) => t,
+                Ok(themes) => themes,
                 Err(error) => panic!("Error loaded themes: {}", error),
             };
 
         // Iterate over all of the theme definitions
         for theme in themes {
+            // Get the theme's name
+            let theme_name = theme.get("name").unwrap().to_string();
+
             // Get the selectedTokenSets property as a serde_json::Value
             let value = theme.get("selectedTokenSets").unwrap().to_owned();
             let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
@@ -173,13 +176,11 @@ impl Loader {
                 .collect();
 
             // Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
-            let theme_name =
-                serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
             let _ = &self.themes.insert(theme_name, enabled_sets);
         }
     }
 
-	/// Loads all the tokens from the input directory into memory.
+    /// Loads all the tokens from the input directory into memory.
     pub fn load(&mut self) {
         self.load_tokens();
         self.load_themes();
