@@ -1,9 +1,9 @@
-use std::fs;
+use colors_transform::{Color, Rgb};
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
-use regex::Regex;
-use lazy_static::lazy_static;
-use colors_transform::{Rgb, Color};
+use std::fs;
 
 use crate::tokens::{TokenDefinition, TokenKind};
 
@@ -14,132 +14,168 @@ fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
 
 #[derive(Debug)]
 pub struct Loader {
-	pub path: String,
-	pub out: String,
-	pub tokens: HashMap<String, TokenDefinition>,
-	pub token_sets: HashMap<String, HashMap<String, String>>,
-	pub themes: HashMap<String, HashMap<String, String>>
+    pub path: String,
+    pub out: String,
+    pub tokens: HashMap<String, TokenDefinition>,
+    pub token_sets: HashMap<String, Vec<String>>,
+    pub themes: HashMap<String, HashMap<String, String>>,
 }
 impl Loader {
-	pub fn new(path: &str, out: &str) -> Loader {
-		fs::create_dir_all(out).unwrap();
-		Loader {
-			path: path.to_string(),
-			out: out.to_string(),
-			tokens: HashMap::new(),
-			token_sets: HashMap::new(),
-			themes: HashMap::new()
-		}
-	}
+    pub fn new(path: &str, out: &str) -> Loader {
+        fs::create_dir_all(out).unwrap();
+        Loader {
+            path: path.to_string(),
+            out: out.to_string(),
+            tokens: HashMap::new(),
+            token_sets: HashMap::new(),
+            themes: HashMap::new(),
+        }
+    }
 
-	pub fn load(&mut self) -> Result<(), Box<dyn Error>> {
-		let metadata_path = &mut self.path.clone();
-		metadata_path.push_str("/$metadata.json");
-		
-		let themes_path = &mut self.path.clone();
-		themes_path.push_str("/$themes.json");
+    /// Recursively iterate through the token JSON, and add the data to self.tokens
+    fn parse_token_set(
+        &mut self,
+        slug: &String,
+        data: HashMap<String, serde_json::Value>,
+        maybe_prefix: Option<&mut Vec<String>>,
+    ) {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+        }
 
-		// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
-		// all of the token sets in order, matching their positions in figma tokens UI.
-		let metadata: HashMap<String, Vec<String>> = serde_json::from_str(&read_file(metadata_path).unwrap())?;
+        let prefix = maybe_prefix.unwrap();
 
-		// Parse all of the tokens and token_sets recursively.
-		for entry in metadata.get("tokenSetOrder") {
-			for slug in entry {
-				// use the slug to create the path to the relevant JSON file.
-				let path = format!("./tokens/{}.json", slug);
+        for (key, value) in data {
+            let mut id = prefix.clone();
+            id.push(key.clone());
 
-				// Read the file as a string, and insert into the files map
-				let file = read_file(&path)?;
+            let kind = value.get("type");
+            match kind {
+                Some(_) => {
+                    // If the "type" property is present, we have a token definition
+                    let mut token: TokenDefinition = serde_json::from_value(value).unwrap();
 
-				let token_set_data: HashMap<String, serde_json::Value> = serde_json::from_str(&file)?;
-				let mut prefix: Vec<String> = vec![];
+                    // do any transformations per token kind
+                    token = match token.kind {
+                        TokenKind::Color => {
+                            // if the token is not a reference to another token,
+                            // then convert it to rgb.
+                            if !RE.is_match(&token.value) {
+                                let rgb = Rgb::from_hex_str(&token.value).unwrap();
+                                token.value = format!(
+                                    "{}, {}, {}",
+                                    rgb.get_red(),
+                                    rgb.get_green(),
+                                    rgb.get_blue()
+                                );
+                            }
+                            token
+                        }
+                        TokenKind::BorderRadius => token,
+                        TokenKind::FontFamily => token,
+                        TokenKind::Spacing => token,
+                        TokenKind::Other => token,
+                    };
 
-				let _ = &self.token_sets.insert(slug.clone(), HashMap::new());
+                    token.name = id.join(".");
 
-				let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
-			}
-		}
+                    let id_parts = vec![
+                        slug.split("/").collect::<Vec<&str>>().join("."),
+                        token.name.clone(),
+                    ];
+                    token.id = id_parts.join(".");
 
-		let themes: Vec<serde_json::Value> = serde_json::from_str(&read_file(themes_path).unwrap())?;
-		for theme in themes {
-			let value = theme.get("selectedTokenSets").unwrap().to_owned();
+                    // Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
+                    // We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
+                    let _ = &self.token_sets.entry(slug.to_string()).and_modify(|v| {
+                        v.push(token.id.clone());
+                    });
 
-			let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
+                    let _ = &self.tokens.insert(token.id.clone(), token);
+                }
+                None => {
+                    // If the "type" property is not present, we have a nested object
+                    let nested_data: HashMap<String, serde_json::Value> =
+                        serde_json::from_value(value).unwrap();
+                    let mut new_prefix = id.clone();
 
-			let enabled_sets: HashMap<String, String> = token_sets.into_iter().filter(|(_, v)| v != "disabled").collect();
+                    let _ = &self.parse_token_set(slug, nested_data, Some(&mut new_prefix));
+                }
+            }
+        }
+    }
 
-			let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
-			let _ = &self.themes.insert(theme_name, enabled_sets);
-		}
+    fn load_tokens(&mut self) {
+        let metadata_path = &mut self.path.clone();
+        metadata_path.push_str("/$metadata.json");
 
-		Ok(())
-	}
+        // This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
+        // all of the token sets in order, matching their positions in figma tokens UI.
+        let metadata: HashMap<String, Vec<String>> =
+            match serde_json::from_str(&read_file(metadata_path).unwrap()) {
+                Ok(json) => json,
+                Err(error) => panic!("Error reading $metdata.json: {}", error),
+            };
 
-	/// Recursively iterate through the token JSON, and add the data to self.tokens
-	fn parse_token_set(&mut self, slug: &String, data: HashMap<String, serde_json::Value>, maybe_prefix: Option<&mut Vec<String>>) {
-		lazy_static! {
-			static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
-		}
+        // Parse all of the tokens and token_sets recursively.
+        for entry in metadata.get("tokenSetOrder") {
+            for slug in entry {
+                // use the slug to create the path to the relevant JSON file.
+                let path = format!("./tokens/{}.json", slug);
 
-		let prefix = maybe_prefix.unwrap();
+                // Read the file as a string, and insert into the files map
+                let file = match read_file(&path) {
+                    Ok(file) => file,
+                    Err(error) => panic!("Problem opening the file: {:?}", error),
+                };
 
-		for (key, value) in data {
-			let mut id = prefix.clone();
-			id.push(key.clone());
+                let token_set_data: HashMap<String, serde_json::Value> =
+                    match serde_json::from_str(&file) {
+                        Ok(file) => file,
+                        Err(error) => panic!("Error parsing token set: {}", error),
+                    };
+                let mut prefix: Vec<String> = vec![];
 
-			let kind = value.get("type");
-			match kind {
-				Some(_) => {
-					// If the "type" property is present, we have a token definition
-					let mut token: TokenDefinition = serde_json::from_value(value).unwrap();
+                let _ = &self.token_sets.insert(slug.clone(), Vec::new());
 
-					// do any transformations per token kind
-					token = match token.kind {
-						TokenKind::Color => {
-							// if the token is not a reference to another token,
-							// then convert it to rgb.
-							if !RE.is_match(&token.value) {
-								let rgb = Rgb::from_hex_str(&token.value).unwrap();
-								token.value = format!("{}, {}, {}", rgb.get_red(), rgb.get_green(), rgb.get_blue());
-							}
-							token
-						},
-						TokenKind::BorderRadius => {
-							token
-						},
-						TokenKind::FontFamily => {
-							token
-						}
-						TokenKind::Spacing => {
-							token
-						}
-						TokenKind::Other => {
-							token
-						}
-					};
+                let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
+            }
+        }
+    }
 
-					token.name = id.join(".");
+    fn load_themes(&mut self) {
+        let themes_path = &mut self.path.clone();
+        themes_path.push_str("/$themes.json");
 
-					let id_parts = vec![slug.split("/").collect::<Vec<&str>>().join("."), token.name.clone()];
-					token.id = id_parts.join(".");
-					
-					// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
-					// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
-					let _ = &self.token_sets.entry(slug.to_string()).and_modify(|v| {
-						v.insert(token.id.clone(), token.name.clone());
-					});
+        // Use themes_path to get the $themes.json file with serde
+        let themes: Vec<serde_json::Value> =
+            match serde_json::from_str(&read_file(themes_path).unwrap()) {
+                Ok(t) => t,
+                Err(error) => panic!("Error loaded themes: {}", error),
+            };
 
-					let _ = &self.tokens.insert(token.id.clone(), token);
-				}
-				None => {
-					// If the "type" property is not present, we have a nested object
-					let nested_data: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
-					let mut new_prefix = id.clone();
+        // Iterate over all of the theme definitions
+        for theme in themes {
+            // Get the selectedTokenSets property as a serde_json::Value
+            let value = theme.get("selectedTokenSets").unwrap().to_owned();
+            let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
 
-					let _ = &self.parse_token_set(slug, nested_data, Some(&mut new_prefix));
-				}
-			}
-		}
-	}
+            // Remove any disabled token sets from the HashMap, leaving only "enabled" and "source"
+            let enabled_sets: HashMap<String, String> = token_sets
+                .into_iter()
+                .filter(|(_, v)| v != "disabled")
+                .collect();
+
+            // Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
+            let theme_name =
+                serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
+            let _ = &self.themes.insert(theme_name, enabled_sets);
+        }
+    }
+
+	/// Loads all the tokens from the input directory into memory.
+    pub fn load(&mut self) {
+        self.load_tokens();
+        self.load_themes();
+    }
 }

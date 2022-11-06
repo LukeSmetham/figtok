@@ -43,7 +43,7 @@ fn main() {
 	}
 
 	let mut loader = Loader::new(&args.dir, &args.out);
-	loader.load().unwrap();
+	loader.load();
 
 	let serializer = CssSerializer::new(loader);
 	let _ = serializer.serialize();
