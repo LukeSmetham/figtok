@@ -126,22 +126,25 @@ impl Loader {
                 // use the slug to create the path to the relevant JSON file.
                 let path = format!("./tokens/{}.json", slug);
 
-                // Read the file as a string, and insert into the files map
-                let file = match read_file(&path) {
-                    Ok(file) => file,
+                // Read the file as a string and convert to JSON with serde
+                let file: HashMap<String, serde_json::Value> = match read_file(&path) {
+                    Ok(file) => match serde_json::from_str(&file) {
+                        Ok(data) => data,
+                        Err(error) => panic!("Error parsing token set: {}", error),
+                    },
                     Err(error) => panic!("Problem opening the file: {:?}", error),
                 };
 
-                let token_set_data: HashMap<String, serde_json::Value> =
-                    match serde_json::from_str(&file) {
-                        Ok(file) => file,
-                        Err(error) => panic!("Error parsing token set: {}", error),
-                    };
+				// Prefix will hold individual portions of the property name, if a value is accessible at 
+				// colors.red.1 then prefix will eventually contain ["colors", "red", "1"] after it has 
+				// recursed through the JSON.
                 let mut prefix: Vec<String> = vec![];
 
+				// Insert a blank token set.
                 let _ = &self.token_sets.insert(slug.clone(), Vec::new());
 
-                let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
+				// Parse the token set
+                let _ = &self.parse_token_set(&slug.to_string(), file, Some(&mut prefix));
             }
         }
     }
