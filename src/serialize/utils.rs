@@ -15,23 +15,25 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
 
     // Check if the original_value contains handlebar syntax with a reference to another token.
     let mut value = if RE.is_match(&token.value) {
-        RE.replace_all(&token.value, |caps: &Captures| { // this will run for each occurrence per string. (i.e. multiple tokens multiplied together)
+        RE.replace_all(&token.value, |caps: &Captures| {
+            // this will run for each occurrence per string. (i.e. multiple tokens multiplied together)
             // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
             let ref_name = &caps[1];
 
             // Find the token using the ref_name.
             match loader.tokens.values().find(|t| t.name == ref_name) {
-                Some(t) => { // If we find a token
+                Some(t) => {
+                    // If we find a token
                     // Replace the reference string with a css variable that points to the other token.
-					let mut new_value = RE
-						.replace(&caps[0], format!("var(--{})", t.name.replace(".", "-")))
-						.to_string();
+                    let mut new_value = RE
+                        .replace(&caps[0], format!("var(--{})", t.name.replace(".", "-")))
+                        .to_string();
 
-					if !token.value.starts_with("rgb") && token.kind == TokenKind::Color {
-						new_value = format!("rgb({})", new_value);
-					}
+                    if !token.value.starts_with("rgb") && token.kind == TokenKind::Color {
+                        new_value = format!("rgb({})", new_value);
+                    }
 
-					new_value
+                    new_value
                 }
                 None => {
                     let mut new_value = RE
@@ -56,7 +58,11 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
 
     // TODO: This needs improving.
     // If the value contains math operators, then wrap it in calc()
-    if value.contains("*") || value.contains("+") || value.contains("/") {
+    if value.contains(" * ")
+        || value.contains(" + ")
+        || value.contains(" / ")
+        || value.contains(" - ")
+    {
         value = format!("calc({})", value);
     };
 
