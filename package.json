@@ -12,7 +12,10 @@
     "uninstall": "node ./uninstall.js"
   },
   "keywords": [],
-  
+  "author": {
+	"email": "luke@smetham.dev",
+	"name": "Luke"
+  },
   "license": "MIT",
   "files": [
     "pre-install.js",

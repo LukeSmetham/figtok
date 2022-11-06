@@ -1,9 +1,12 @@
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::error::Error;
 use std::fs;
 
-use crate::{loader::Loader, tokens::TokenDefinition};
+use crate::{
+    loader::Loader,
+    tokens::{TokenDefinition}
+};
+
+use super::get_token_value;
 
 pub struct CssSerializer {
     loader: Loader,
@@ -61,51 +64,7 @@ impl CssSerializer {
 
     /// Take a single TokenDefinition, and serialize it to a CSS Variable string.
     fn serialize_one(&self, token: &TokenDefinition) -> String {
-        let value = self.enrich_token_value(token.value.clone(), false);
+        let value = get_token_value(&self.loader, token);
         format!("--{}: {};", token.name.replace(".", "-"), value)
-    }
-
-    /// Tests if a value is a static value or a reference. If static it's returned as is,
-    /// whereas if it's a reference we go and retrieve the token, and either set the value
-    /// in place, or replace the handlebar reference string with css variable syntax depending
-    /// on the replace_with_value arg.
-    fn enrich_token_value(&self, value: String, replace_with_value: bool) -> String {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
-        }
-
-        // Check if the value contains handlebar syntax with a reference to another token.
-        let value = if RE.is_match(&value) {
-			// TODO: Handle multiple captures e.g. {base} * {font-scale}
-            let captures = RE.captures(&value).unwrap();
-
-            // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
-            let ref_id = &captures[1];
-            let ref_token = &self.loader.tokens.values().find(|t| t.name == ref_id);
-
-            match ref_token {
-                Some(t) => {
-                    if !replace_with_value {
-                        // Replace the reference string with a css variable that points to the other token.
-                        let mut value = RE
-                            .replace(
-                                &value.to_string(),
-                                format!("var(--{})", t.name.clone().replace(".", "-")),
-                            )
-                            .to_string();
-                        if !&value.starts_with("rgb") {
-                            value = format!("rgb({})", value);
-                        }
-                        value
-                    } else {
-                        // replace the reference string with the value of the referenced token statically.
-                        RE.replace(&value.to_string(), t.value.clone()).to_string()
-                    }
-                }
-                None => value,
-            }
-        } else {
-            value
-        };
     }
 }
