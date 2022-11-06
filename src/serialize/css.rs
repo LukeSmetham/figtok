@@ -23,7 +23,7 @@ impl CssSerializer {
             value.push_str(":root{");
             for id in token_set {
                 let token = &self.loader.tokens[id];
-                value.push_str(self.serialize_token(token).as_str());
+                value.push_str(self.serialize_one(token).as_str());
             }
             value.push_str("}");
 
@@ -60,7 +60,7 @@ impl CssSerializer {
     }
 
     /// Take a single TokenDefinition, and serialize it to a CSS Variable string.
-    fn serialize_token(&self, token: &TokenDefinition) -> String {
+    fn serialize_one(&self, token: &TokenDefinition) -> String {
         let value = self.enrich_token_value(token.value.clone(), false);
         format!("--{}: {};", token.name.replace(".", "-"), value)
     }
