@@ -75,7 +75,8 @@ impl CssSerializer {
         }
 
         // Check if the value contains handlebar syntax with a reference to another token.
-        if RE.is_match(&value) {
+        let value = if RE.is_match(&value) {
+			// TODO: Handle multiple captures e.g. {base} * {font-scale}
             let captures = RE.captures(&value).unwrap();
 
             // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
@@ -105,6 +106,6 @@ impl CssSerializer {
             }
         } else {
             value
-        }
+        };
     }
 }
