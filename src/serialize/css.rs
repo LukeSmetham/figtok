@@ -6,7 +6,7 @@ use crate::{
     tokens::{TokenDefinition}
 };
 
-use super::get_token_value;
+use super::utils;
 
 pub struct CssSerializer {
     loader: Loader,
@@ -65,7 +65,7 @@ impl CssSerializer {
 
     /// Take a single TokenDefinition, and serialize it to a CSS Variable string.
     fn serialize_one(&self, token: &TokenDefinition) -> String {
-        let value = get_token_value(&self.loader, token);
+        let value = utils::get_token_value(&self.loader, token);
         format!("--{}: {};", token.name.replace(".", "-"), value)
     }
 }
