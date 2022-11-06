@@ -17,14 +17,14 @@ pub fn get_token_value(loader: &Loader, og_token: &TokenDefinition) -> String {
     let mut value = if RE.is_match(&og_token.value) {
         RE.replace_all(&og_token.value, |caps: &Captures| { // this will run for each occurrence per string. (i.e. multiple tokens multiplied together)
             // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
-            let ref_id = &caps[1];
+            let ref_name = &caps[1];
 
-            // Find the token using the ref_id.
-            match loader.tokens.values().find(|t| t.name == ref_id) {
+            // Find the token using the ref_name.
+            match loader.tokens.values().find(|t| t.name == ref_name) {
                 Some(t) => { // If we find a token
                     // Replace the reference string with a css variable that points to the other token.
 					let mut new_value = RE
-						.replace(&caps[0], format!("var(--{})", ref_id.replace(".", "-")))
+						.replace(&caps[0], format!("var(--{})", t.name.replace(".", "-")))
 						.to_string();
 
 					if !og_token.value.starts_with("rgb") && og_token.kind == TokenKind::Color {
@@ -37,7 +37,7 @@ pub fn get_token_value(loader: &Loader, og_token: &TokenDefinition) -> String {
                     let mut new_value = RE
                         .replace_all(
                             &og_token.value.to_string(),
-                            format!("var(--{})", ref_id.replace(".", "-")),
+                            format!("var(--{})", ref_name.replace(".", "-")),
                         )
                         .to_string();
 
