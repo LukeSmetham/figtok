@@ -10,12 +10,13 @@ use regex::{Captures, Regex};
 /// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
 pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
     lazy_static! {
-        static ref RE: Regex = Regex::new(r"\{([x[^\{\}]]*)\}.*?").unwrap();
+        static ref REGEX_HB: Regex = Regex::new(r"\{([x[^\{\}]]*)\}.*?").unwrap();
+		static ref REGEX_CALC: Regex = Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz))\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz))( )?$").unwrap();
     }
 
     // Check if the original_value contains handlebar syntax with a reference to another token.
-    let mut value = if RE.is_match(&token.value) {
-        RE.replace_all(&token.value, |caps: &Captures| {
+    let mut value = if REGEX_HB.is_match(&token.value) {
+        REGEX_HB.replace_all(&token.value, |caps: &Captures| {
             // this will run for each occurrence per string. (i.e. multiple tokens multiplied together)
             // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
             let ref_name = &caps[1];
@@ -25,7 +26,7 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
                 Some(t) => {
                     // If we find a token
                     // Replace the reference string with a css variable that points to the other token.
-                    let mut new_value = RE
+                    let mut new_value = REGEX_HB
                         .replace(&caps[0], format!("var(--{})", t.name.replace(".", "-")))
                         .to_string();
 
@@ -36,7 +37,7 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
                     new_value
                 }
                 None => {
-                    let mut new_value = RE
+                    let mut new_value = REGEX_HB
                         .replace_all(
                             &token.value.to_string(),
                             format!("var(--{})", ref_name.replace(".", "-")),
@@ -56,14 +57,13 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
         token.value.clone()
     };
 
-    // TODO: This needs improving.
-    // If the value contains math operators, then wrap it in calc()
-    if value.contains(" * ")
-        || value.contains(" + ")
-        || value.contains(" / ")
-        || value.contains(" - ")
+    // TODO: This could be temperamental and might need improving upon.
+	// We check a regex for a css arithmetic expression and if ew have a match,
+	// then we wrap the value in calc() so CSS can do the lifting for us and
+	// we keep references alive.
+    if REGEX_CALC.is_match(&value)
     {
-        value = format!("calc({})", value);
+		value = format!("calc({})", value);
     };
 
     value

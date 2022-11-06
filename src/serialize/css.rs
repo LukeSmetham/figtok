@@ -37,7 +37,6 @@ impl CssSerializer {
             let dir = match set_name.rsplit_once("/") {
                 Some((d, _)) => d,
                 None => "",
- 
 			};
 
 			// Ensure the directories we need exist

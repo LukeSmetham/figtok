@@ -7,7 +7,7 @@ You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and th
 
 ### Gotchas
 - If you're not using Figma Tokens "Themes," and just have Token Sets, you need to remember to import all of the necessary css files so that the variable-based values still work. (i.e. if you have a "light" set that also depends on some "global" set tokens, you need to also @import the global set for the light set to work properly.)
-
+- If you use any math operators in your tokens, you need to make sure you have a whitespace character eitherside of the operator when you define the token (i.e. `{base-size} * {font-scale}` not `{base-size}*{font-scale}` or `{base-size}* {font-scale}` etc.)
 
 ## Installation
 ```bash
