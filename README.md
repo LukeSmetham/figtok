@@ -32,7 +32,7 @@ figtok --dir ./tokens --out ./build
 - [ ] Add remaining token types (TokenKind::*)
 - [ ] Check/Add support for HSL colors
 - [ ] Figma Tokens "Composition Tokens" Support
-- [ ] Support for Figma tokens Math syntax
+- [X] Support for Figma tokens Math syntax
 - [ ] Support for if Figma Tokens is set up to export one huge file instead of splitting into files and directories.
 - [X] Support for users that have no Themes, just token sets. (The below should help with this, if we can output the sets separately, we can change the theme output so that by default, all sets get their own css file, and the theme output just uses `@import` to include the relevant sets in one file.)
 - [X] Devise a way to output the source sets and enabled sets separately. We will want to also keep track of the source sets we have already processed so that we only handle them once (multiple themes may use the same source sets.) Consider also some kind of index file that `@import` all of the individual sets per-theme with the option to include all, namespaced by a class name on `:root`
