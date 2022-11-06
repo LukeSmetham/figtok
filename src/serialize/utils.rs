@@ -10,7 +10,9 @@ use regex::{Captures, Regex};
 /// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
 pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
     lazy_static! {
+		// Looks for handlebar syntax and captures the inner value
         static ref REGEX_HB: Regex = Regex::new(r"\{([x[^\{\}]]*)\}.*?").unwrap();
+		// Looks for CSS math expressions
 		static ref REGEX_CALC: Regex = Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz))\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz))( )?$").unwrap();
     }
 
