@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
 /// Tests if a value is a static value or a reference. If static it's returned as is,
-/// whereas if it's a reference we go and retrieve the token, and update the value.
+/// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
 pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"\{([x[^\{\}]]*)\}.*?").unwrap();
