@@ -1,0 +1,104 @@
+{
+  "font-scale": {
+    "value": "1.125",
+    "type": "other"
+  },
+  "typescale": {
+    "0": {
+      "value": "{typescale.1} / {font-scale}",
+      "type": "other"
+    },
+    "1": {
+      "value": "{base} / {font-scale}",
+      "type": "other"
+    },
+    "2": {
+      "value": "{base}",
+      "type": "other"
+    },
+    "3": {
+      "value": "{base} * {font-scale}",
+      "type": "other"
+    },
+    "4": {
+      "value": "{typescale.3} * {font-scale}",
+      "type": "other"
+    },
+    "5": {
+      "value": "{typescale.4} * {font-scale}",
+      "type": "other"
+    },
+    "6": {
+      "value": "{typescale.5} * {font-scale}",
+      "type": "other"
+    },
+    "7": {
+      "value": "{typescale.6} * {font-scale}",
+      "type": "other"
+    },
+    "8": {
+      "value": "{typescale.7} * {font-scale}",
+      "type": "other"
+    },
+    "9": {
+      "value": "{typescale.8} * {font-scale}",
+      "type": "other"
+    },
+    "10": {
+      "value": "{typescale.9} * {font-scale}",
+      "type": "other"
+    },
+    "11": {
+      "value": "{typescale.10} * {font-scale}",
+      "type": "other"
+    },
+    "12": {
+      "value": "{typescale.11} * {font-scale}",
+      "type": "other"
+    },
+    "13": {
+      "value": "{typescale.12} * {font-scale}",
+      "type": "other"
+    },
+    "14": {
+      "value": "{typescale.13} * {font-scale}",
+      "type": "other"
+    },
+    "15": {
+      "value": "{typescale.14} * {font-scale}",
+      "type": "other"
+    },
+    "16": {
+      "value": "{typescale.15} * {font-scale}",
+      "type": "other"
+    }
+  },
+  "letterSpacing": {
+    "0": {
+      "value": "1%",
+      "type": "letterSpacing"
+    },
+    "1": {
+      "value": "0%",
+      "type": "letterSpacing"
+    },
+    "2": {
+      "value": "-1%",
+      "type": "letterSpacing"
+    },
+    "3": {
+      "value": "-2%",
+      "type": "letterSpacing"
+    }
+  },
+  "font": {
+    "text": {
+      "value": "Satoshi Variable",
+      "type": "fontFamilies"
+    },
+    "title": {
+      "value": "Crimson Pro",
+      "type": "fontFamilies"
+    }
+  }
+}

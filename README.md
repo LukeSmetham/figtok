@@ -7,7 +7,7 @@ You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and th
 
 ### Gotchas
 - If you're not using Figma Tokens "Themes," and just have Token Sets, you need to remember to import all of the necessary css files so that the variable-based values still work. (i.e. if you have a "light" set that also depends on some "global" set tokens, you need to also @import the global set for the light set to work properly.)
-
+- If you use any math operators in your tokens, you need to make sure you have a whitespace character eitherside of the operator when you define the token (i.e. `{base-size} * {font-scale}` not `{base-size}*{font-scale}` or `{base-size}* {font-scale}` etc.)
 
 ## Installation
 ```bash
@@ -32,6 +32,7 @@ figtok --dir ./tokens --out ./build
 - [ ] Add remaining token types (TokenKind::*)
 - [ ] Check/Add support for HSL colors
 - [ ] Figma Tokens "Composition Tokens" Support
+- [X] Support for Figma tokens Math syntax
 - [ ] Support for if Figma Tokens is set up to export one huge file instead of splitting into files and directories.
 - [X] Support for users that have no Themes, just token sets. (The below should help with this, if we can output the sets separately, we can change the theme output so that by default, all sets get their own css file, and the theme output just uses `@import` to include the relevant sets in one file.)
 - [X] Devise a way to output the source sets and enabled sets separately. We will want to also keep track of the source sets we have already processed so that we only handle them once (multiple themes may use the same source sets.) Consider also some kind of index file that `@import` all of the individual sets per-theme with the option to include all, namespaced by a class name on `:root`

@@ -40,7 +40,7 @@ impl Loader {
         maybe_prefix: Option<&mut Vec<String>>,
     ) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+            static ref REGEX_HBS: Regex = Regex::new(r"\{(.*)\}").unwrap();
         }
 
         let prefix = maybe_prefix.unwrap();
@@ -58,9 +58,9 @@ impl Loader {
                     // do any transformations per token kind
                     token = match token.kind {
                         TokenKind::Color => {
-                            // if the token is not a reference to another token,
-                            // then convert it to rgb.
-                            if !RE.is_match(&token.value) {
+                            // if the token doesn't contain a reference to 
+							// another token, then convert it to rgb.
+                            if !REGEX_HBS.is_match(&token.value) {
                                 let rgb = Rgb::from_hex_str(&token.value).unwrap();
                                 token.value = format!(
                                     "{}, {}, {}",
@@ -73,7 +73,9 @@ impl Loader {
                         }
                         TokenKind::BorderRadius => token,
                         TokenKind::FontFamily => token,
-						TokenKind::LetterSpacing => token,
+                        TokenKind::FontSize => token,
+                        TokenKind::LetterSpacing => token,
+                        TokenKind::LineHeight => token,
                         TokenKind::Spacing => token,
                         TokenKind::Other => token,
                     };
@@ -124,22 +126,25 @@ impl Loader {
                 // use the slug to create the path to the relevant JSON file.
                 let path = format!("./tokens/{}.json", slug);
 
-                // Read the file as a string, and insert into the files map
-                let file = match read_file(&path) {
-                    Ok(file) => file,
+                // Read the file as a string and convert to JSON with serde
+                let file: HashMap<String, serde_json::Value> = match read_file(&path) {
+                    Ok(file) => match serde_json::from_str(&file) {
+                        Ok(data) => data,
+                        Err(error) => panic!("Error parsing token set: {}", error),
+                    },
                     Err(error) => panic!("Problem opening the file: {:?}", error),
                 };
 
-                let token_set_data: HashMap<String, serde_json::Value> =
-                    match serde_json::from_str(&file) {
-                        Ok(file) => file,
-                        Err(error) => panic!("Error parsing token set: {}", error),
-                    };
+                // Prefix will hold individual portions of the property name, if a value is accessible at
+                // colors.red.1 then prefix will eventually contain ["colors", "red", "1"] after it has
+                // recursed through the JSON.
                 let mut prefix: Vec<String> = vec![];
 
+                // Insert a blank token set.
                 let _ = &self.token_sets.insert(slug.clone(), Vec::new());
 
-                let _ = &self.parse_token_set(&slug.to_string(), token_set_data, Some(&mut prefix));
+                // Parse the token set
+                let _ = &self.parse_token_set(&slug.to_string(), file, Some(&mut prefix));
             }
         }
     }
@@ -151,12 +156,15 @@ impl Loader {
         // Use themes_path to get the $themes.json file with serde
         let themes: Vec<serde_json::Value> =
             match serde_json::from_str(&read_file(themes_path).unwrap()) {
-                Ok(t) => t,
+                Ok(themes) => themes,
                 Err(error) => panic!("Error loaded themes: {}", error),
             };
 
         // Iterate over all of the theme definitions
         for theme in themes {
+            // Get the theme's name
+            let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
+
             // Get the selectedTokenSets property as a serde_json::Value
             let value = theme.get("selectedTokenSets").unwrap().to_owned();
             let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
@@ -168,13 +176,11 @@ impl Loader {
                 .collect();
 
             // Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
-            let theme_name =
-                serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
             let _ = &self.themes.insert(theme_name, enabled_sets);
         }
     }
 
-	/// Loads all the tokens from the input directory into memory.
+    /// Loads all the tokens from the input directory into memory.
     pub fn load(&mut self) {
         self.load_tokens();
         self.load_themes();

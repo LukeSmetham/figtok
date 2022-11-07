@@ -1,0 +1,24 @@
+{
+  "base": {
+    "value": "16px",
+    "type": "other"
+  },
+  "radius": {
+    "small": {
+      "value": "8px",
+      "type": "borderRadius"
+    },
+    "default": {
+      "value": "16px",
+      "type": "borderRadius"
+    },
+    "large": {
+      "value": "24px",
+      "type": "borderRadius"
+    },
+    "extra-large": {
+      "value": "32px",
+      "type": "borderRadius"
+    }
+  }
+}

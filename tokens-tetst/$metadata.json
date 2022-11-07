@@ -1,0 +1,9 @@
+{
+  "tokenSetOrder": [
+    "global",
+    "primitives/colors",
+    "primitives/space",
+    "primitives/typography",
+    "light"
+  ]
+}
