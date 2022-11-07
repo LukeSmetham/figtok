@@ -40,7 +40,7 @@ impl Loader {
         maybe_prefix: Option<&mut Vec<String>>,
     ) {
         lazy_static! {
-            static ref RE: Regex = Regex::new(r"\{(.*)\}").unwrap();
+            static ref REGEX_HBS: Regex = Regex::new(r"\{(.*)\}").unwrap();
         }
 
         let prefix = maybe_prefix.unwrap();
@@ -58,9 +58,9 @@ impl Loader {
                     // do any transformations per token kind
                     token = match token.kind {
                         TokenKind::Color => {
-                            // if the token is not a reference to another token,
-                            // then convert it to rgb.
-                            if !RE.is_match(&token.value) {
+                            // if the token doesn't contain a reference to 
+							// another token, then convert it to rgb.
+                            if !REGEX_HBS.is_match(&token.value) {
                                 let rgb = Rgb::from_hex_str(&token.value).unwrap();
                                 token.value = format!(
                                     "{}, {}, {}",

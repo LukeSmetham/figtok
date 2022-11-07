@@ -88,7 +88,8 @@ impl CssSerializer {
         Ok(())
     }
 
-    /// Take a single TokenDefinition, and serialize it to a CSS Variable string.
+    /// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
+	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
     fn serialize_one(&self, token: &TokenDefinition) -> String {
         let value = utils::get_token_value(&self.loader, token);
         format!("--{}: {};", token.name.replace(".", "-"), value)
