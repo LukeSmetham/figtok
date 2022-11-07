@@ -163,7 +163,7 @@ impl Loader {
         // Iterate over all of the theme definitions
         for theme in themes {
             // Get the theme's name
-            let theme_name = theme.get("name").unwrap().to_string();
+            let theme_name = serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
 
             // Get the selectedTokenSets property as a serde_json::Value
             let value = theme.get("selectedTokenSets").unwrap().to_owned();

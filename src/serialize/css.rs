@@ -58,10 +58,12 @@ impl CssSerializer {
                 value.push_str(format!("@import \"./{}.css\";", set).as_str());
             }
 
+			// TODO: We may want to eventually handle some theme-specific css here too like classes, namespaced styles etc.
+
             // Themes must be output to the top level so that the import paths work
             // we can probably work around this if we want as things improve.
-
             let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
+
             let _ = fs::write(
                 format!("{}/{}.css", &self.loader.out, name_parts.join("-")),
                 value,
