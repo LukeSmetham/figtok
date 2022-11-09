@@ -6,13 +6,13 @@ use crate::{
     tokens::{TokenDefinition}
 };
 
-use super::utils;
+use super::{utils, Serializer};
 
 pub struct CssSerializer {
     loader: Loader,
 }
 impl CssSerializer {
-    pub fn new(loader: Loader) -> CssSerializer {
+	pub fn new(loader: Loader) -> CssSerializer {
         CssSerializer { loader: loader }
     }
 
@@ -69,12 +69,13 @@ impl CssSerializer {
                 value,
             );
         }
-	} 
-
-    /// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
+	}
+}
+impl Serializer for CssSerializer {
+	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
-    pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
+    fn run(&self) -> Result<(), Box<dyn Error>> {
         self.serialize_token_sets();
 
 		// Themes are not just collections of tokens, but collection of sets. 
@@ -90,7 +91,7 @@ impl CssSerializer {
         Ok(())
     }
 
-    /// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
+	/// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
 	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
     fn serialize_one(&self, token: &TokenDefinition) -> String {
         let value = utils::get_token_value(&self.loader, token);

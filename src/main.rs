@@ -18,6 +18,8 @@ use loader::Loader;
 mod serialize;
 use serialize::CssSerializer;
 
+use crate::serialize::Serializer;
+
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -50,7 +52,7 @@ fn main() {
 	loader.load();
 
 	let serializer = CssSerializer::new(loader);
-	let _ = serializer.serialize();
+	let _ = serializer.run();
 
 	println!("Done! Check {} for the output CSS", args.out);
 }
