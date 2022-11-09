@@ -1,11 +1,10 @@
 use colors_transform::{Color, Rgb};
-use lazy_static::lazy_static;
-use regex::Regex;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 
 use crate::tokens::{TokenDefinition, TokenKind};
+use crate::helpers::{REGEX_HB};
 
 fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
     let data = fs::read_to_string(filepath)?;
@@ -39,10 +38,6 @@ impl Loader {
         data: HashMap<String, serde_json::Value>,
         maybe_prefix: Option<&mut Vec<String>>,
     ) {
-        lazy_static! {
-            static ref REGEX_HBS: Regex = Regex::new(r"\{(.*)\}").unwrap();
-        }
-
         let prefix = maybe_prefix.unwrap();
 
         for (key, value) in data {
@@ -60,7 +55,7 @@ impl Loader {
                         TokenKind::Color => {
                             // if the token doesn't contain a reference to 
 							// another token, then convert it to rgb.
-                            if !REGEX_HBS.is_match(&token.value) {
+                            if !REGEX_HB.is_match(&token.value) {
                                 let rgb = Rgb::from_hex_str(&token.value).unwrap();
                                 token.value = format!(
                                     "{}, {}, {}",
