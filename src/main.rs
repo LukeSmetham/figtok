@@ -21,14 +21,15 @@ use serialize::CssSerializer;
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
-   /// Name of the person to greet
+   /// The directory containing your tokens.
    #[arg(short, long, default_value = "./tokens")]
    dir: String,
 
-   /// Number of times to greet
+   /// The format to output the tokens to. Currently only supports CSS.
    #[arg(short, long, default_value = "css")]
    format: String,
 
+   /// The directory the output should be written to.
    #[arg(short, long, default_value = "./build")]
    out: String
 }
