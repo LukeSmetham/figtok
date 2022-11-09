@@ -29,16 +29,17 @@ figtok --dir ./tokens --out ./build
 ```
 
 ## TODO
+- [ ] Support for JSON export (Export JSON that can be used in CSS-in-JS theme setups)
+	- With JSON export, we'll want to replace the value in place rather than replace it with a `var(--whatever)` - or a reference to a part of the theme. This means that all values become static (`theme.backround === '#fff'` instead of `theme.background === "var(--neutral-0)"`) 
 - [ ] Add remaining token types (TokenKind::*)
-- [ ] Check/Add support for HSL colors
-- [ ] Figma Tokens "Composition Tokens" Support
+- [ ] Figma Tokens "Composition Tokens" Support (Similar to Typography tokens)
 - [ ] Improve usage of Clap/CLI
 - [X] Support for Figma tokens Math syntax
 - [ ] Support for typography tokens
 - [ ] Support for if Figma Tokens is set up to export one huge file instead of splitting into files and directories.
 - [X] Support for users that have no Themes, just token sets. (The below should help with this, if we can output the sets separately, we can change the theme output so that by default, all sets get their own css file, and the theme output just uses `@import` to include the relevant sets in one file.)
 - [X] Devise a way to output the source sets and enabled sets separately. We will want to also keep track of the source sets we have already processed so that we only handle them once (multiple themes may use the same source sets.) Consider also some kind of index file that `@import` all of the individual sets per-theme with the option to include all, namespaced by a class name on `:root`
-- [ ] Support for JSON export.
+- [ ] Check/Add support for HSL colors
 
 
 ## How to Deploy
