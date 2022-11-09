@@ -76,6 +76,11 @@ impl Serializer for CssSerializer {
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
     fn run(&self) -> Result<(), Box<dyn Error>> {
+		// TODO: Remove any existing output (clear the build dir) before running.
+
+		// Ensure the output directory exists
+		fs::create_dir_all(&self.loader.out).unwrap();
+
         self.serialize_token_sets();
 
 		// Themes are not just collections of tokens, but collection of sets. 
