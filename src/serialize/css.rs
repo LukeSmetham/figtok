@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fs;
 
 use crate::{
-    loader::Loader,
+    load::Loader,
     tokens::{TokenDefinition}
 };
 

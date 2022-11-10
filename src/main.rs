@@ -12,8 +12,8 @@ extern crate once_cell;
 mod helpers;
 mod tokens;
 
-mod loader;
-use loader::Loader;
+mod load;
+use load::Loader;
 
 mod serialize;
 use serialize::CssSerializer;

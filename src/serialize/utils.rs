@@ -1,6 +1,6 @@
 use crate::{
 	helpers::{REGEX_CALC, REGEX_HB},
-    loader::Loader,
+    load::Loader,
     tokens::{TokenDefinition, TokenKind},
 };
 
