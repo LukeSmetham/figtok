@@ -11,11 +11,10 @@ extern crate once_cell;
 
 mod helpers;
 mod tokens;
-
 mod load;
-use load::Loader;
-
 mod serialize;
+
+use load::Loader;
 use serialize::CssSerializer;
 
 use crate::serialize::Serializer;
