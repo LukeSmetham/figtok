@@ -34,7 +34,22 @@ impl Loader for JsonLoader {
 
 		let (token_sets, themes) = match mode {
 			FileMode::SingleFile => {
-				todo!("Support Single File Format");
+				let data: serde_json::Value = match serde_json::from_str(&read_file(&entry_path).unwrap()) {
+					Ok(json) => json,
+					Err(error) => panic!("Error reading $metdata.json: {}", error),
+				};
+
+				let metadata = data.get("$metadata").unwrap();
+				let themes: Vec<serde_json::Value> = serde_json::from_value(data.get("$themes").unwrap().to_owned()).unwrap();
+
+				let mut token_sets: HashMap<String, TokenSet> = HashMap::new();
+
+				for slug in serde_json::from_value::<Vec<String>>(metadata.get("tokenSetOrder").unwrap().to_owned()).unwrap() {
+					let token_set: TokenSet = serde_json::from_value(data.get(&slug).unwrap().to_owned()).unwrap();
+					token_sets.insert(slug.clone(), token_set);
+				}
+
+				(token_sets, themes)
 			},
 			FileMode::MultiFile => {
 				// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
@@ -162,6 +177,7 @@ impl JsonLoader {
                         TokenKind::BorderRadius => token,
                         TokenKind::BorderWidth => token,
                         TokenKind::FontFamily => token,
+                        TokenKind::FontWeights => token,
                         TokenKind::FontSize => token,
                         TokenKind::LetterSpacing => token,
                         TokenKind::LineHeight => token,
