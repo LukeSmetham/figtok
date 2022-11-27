@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fs;
 
+use convert_case::{Case, Casing};
+
 use crate::{
     load::Loader,
     tokens::{TokenDefinition}
@@ -97,6 +99,6 @@ impl Serializer for CssSerializer {
 	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
     fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> String {
         let value = utils::get_token_value(loader, token);
-        format!("--{}: {};", token.name.replace(".", "-"), value)
+        format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
     }
 }

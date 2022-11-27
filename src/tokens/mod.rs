@@ -1,5 +1,7 @@
 pub mod helpers;
 
+use std::collections::HashMap;
+
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -14,6 +16,8 @@ pub enum TokenKind {
     FontFamily,
 	#[serde(alias = "fontSizes")]
 	FontSize,
+	#[serde(alias = "fontWeights")]
+	FontWeights,
 	#[serde(alias = "letterSpacing")]
 	LetterSpacing,
 	#[serde(alias = "lineHeights")]
@@ -38,3 +42,5 @@ pub struct TokenDefinition {
 	#[serde(default)]
 	pub id: String,
 }
+
+pub type TokenSet = HashMap<String, serde_json::Value>;
