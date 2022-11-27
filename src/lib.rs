@@ -18,10 +18,15 @@ pub struct Figtok {
 }
 impl Figtok {
 	pub fn create(path: &String, out: &String, format: &String) -> Result<Figtok, Box<dyn Error>> {
-		// Ensure output directory exists
-		// TODO: We should destroy anything existing in the output directory in the event that it exists.
+		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
+		if Path::new(&out).is_dir() {
+			fs::remove_dir(&out).unwrap();
+		}
+
+		// Now ensure the out dir exists.
 		fs::create_dir_all(&out).unwrap();
 
+		// TODO We only support CSS right now and use it as default, so this check should only trip if the user specifically tries to export with a different format via the CLI.
 		if format != "css" {
 			panic!("Outputting your tokens to {} is not yet supported.", format);
 		}
@@ -31,12 +36,14 @@ impl Figtok {
 			panic!("No {} directory found, passed as input directory", path);
 		}
 
-		Ok(Figtok{
+		let inst = Figtok{
 			path: path.clone(),
 			out: out.clone(),
 			loader: Loader::new(),
 			serializer: CssSerializer::new()
-		})
+		};
+
+		Ok(inst)
 	}
 
 	pub fn load(&mut self) {
