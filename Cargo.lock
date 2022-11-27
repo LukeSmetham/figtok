@@ -73,7 +73,7 @@ checksum = "9226dbc05df4fb986f48d730b001532580883c4c06c5d1c213f4b34c1c157178"
 
 [[package]]
 name = "figtok"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "clap",
  "colors-transform",

@@ -1,3 +1,6 @@
+build: 
+	rust-to-npm build
+
 clean:
 	rm -rf build
 
