@@ -10,10 +10,6 @@ use super::{utils, Serializer};
 
 pub struct CssSerializer {}
 impl CssSerializer {
-	pub fn new() -> CssSerializer {
-        CssSerializer {}
-    }
-
 	fn serialize_token_sets(&self, loader: &Loader, output_path: &String) {
 		// Loop over the token sets and create a CSS file for each
         for (set_name, token_set) in &loader.token_sets {
@@ -70,6 +66,10 @@ impl CssSerializer {
 	}
 }
 impl Serializer for CssSerializer {
+	fn new() -> CssSerializer {
+        CssSerializer {}
+    }
+
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.

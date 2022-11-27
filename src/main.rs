@@ -1,4 +1,5 @@
 use figtok::Figtok;
+use figtok::serialize::CssSerializer;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -6,11 +7,11 @@ use clap::Parser;
 struct Args {
     /// The directory containing your tokens.
     #[arg(short, long, default_value = "./tokens")]
-    dir: String,
+    entry: String,
 
     /// The directory the output should be written to.
     #[arg(short, long, default_value = "./build")]
-    out: String,
+    output: String,
 
     /// The format to output the tokens to. Currently only supports CSS.
     #[arg(short, long, default_value = "css")]
@@ -20,10 +21,16 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-    let mut figtok = Figtok::create(&args.dir, &args.out, &args.format).unwrap();
+	// TODO We only support CSS right now and use it as default, so this check should only trip if the user specifically tries to export with a different format.
+	if args.format != "css" {
+		panic!("Outputting your tokens to {} is not yet supported.", args.format);
+	}
+
+	
+	let mut figtok = Figtok::<CssSerializer>::create(&args.entry, &args.output).unwrap();
 
     figtok.load();
     figtok.export();
 
-    println!("Done! Check {} for the output CSS", args.out);
+    println!("Done! Check {} for the built files.", args.output);
 }

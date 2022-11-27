@@ -171,8 +171,8 @@ impl Loader {
     }
 
     /// Loads all the tokens from the input directory into memory.
-    pub fn load(&mut self, input_path: &String) {
-        self.load_tokens(input_path);
-        self.load_themes(input_path);
+    pub fn load(&mut self, entry_path: &String) {
+        self.load_tokens(entry_path);
+        self.load_themes(entry_path);
     }
 }

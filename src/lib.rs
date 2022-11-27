@@ -6,56 +6,52 @@ extern crate once_cell;
 
 mod helpers;
 mod tokens;
-mod load;
-mod serialize;
+pub mod load;
+pub mod serialize;
 
 use std::error::Error;
 use std::fs;
 use std::path::Path;
 use load::Loader;
-use serialize::{CssSerializer, Serializer};
+use serialize::Serializer;
 
-pub struct Figtok {
-	path: String,
-	out: String,
+pub struct Figtok<T: Serializer> {
+	entry_path: String,
+	output_path: String,
 
 	pub loader: Loader,
-	pub serializer: CssSerializer
+	pub serializer: T
 }
-impl Figtok {
-	pub fn create(path: &String, out: &String, format: &String) -> Result<Figtok, Box<dyn Error>> {
+impl <T: Serializer> Figtok<T> {
+	pub fn create(entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
 		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
-		if Path::new(&out).is_dir() {
-			fs::remove_dir_all(&out).unwrap();
+		if Path::new(&output_path).is_dir() {
+			fs::remove_dir_all(&output_path).unwrap();
 		}
-		// Now ensure the out dir exists.
-		fs::create_dir_all(&out).unwrap();
 
-		// TODO We only support CSS right now and use it as default, so this check should only trip if the user specifically tries to export with a different format via the CLI.
-		if format != "css" {
-			panic!("Outputting your tokens to {} is not yet supported.", format);
-		}
-	
+		// Now ensure the output_path dir exists.
+		fs::create_dir_all(&output_path).unwrap();
+
 		// Check if the input directory exists
-		if !Path::new(&path).is_dir() {
-			panic!("No {} directory found, passed as input directory", path);
+		if !Path::new(&entry_path).is_dir() {
+			panic!("No {} directory found, passed as input directory", entry_path);
 		}
 
-		let inst = Figtok{
-			path: path.clone(),
-			out: out.clone(),
-			loader: Loader::new(),
-			serializer: CssSerializer::new()
-		};
-
-		Ok(inst)
+		Ok(
+			Figtok {
+				entry_path: entry_path.clone(),
+				output_path: output_path.clone(),
+				loader: Loader::new(),
+				serializer: T::new()
+			}
+		)
 	}
 
 	pub fn load(&mut self) {
-		let _ = &mut self.loader.load(&self.path);
+		let _ = &mut self.loader.load(&self.entry_path);
 	}
 	
 	pub fn export(&self) {
-		let _ = self.serializer.run(&self.loader, self.out.to_owned());
+		let _ = self.serializer.run(&self.loader, self.output_path.to_owned());
 	}
 }
