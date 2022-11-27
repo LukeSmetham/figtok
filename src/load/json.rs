@@ -34,7 +34,7 @@ impl Loader for JsonLoader {
 
 		let (token_sets, themes) = match mode {
 			FileMode::SingleFile => {
-				todo!("Support Single File Exports");
+				todo!("Support Single File Format");
 			},
 			FileMode::MultiFile => {
 				// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with

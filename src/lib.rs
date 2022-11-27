@@ -33,7 +33,7 @@ impl <T: Loader, U: Serializer> Figtok<T, U> {
 		fs::create_dir_all(&output_path).unwrap();
 
 		// Check if the input directory exists
-		if !Path::new(&entry_path).is_dir() {
+		if !Path::new(&entry_path).exists() {
 			panic!("No {} directory found, passed as input directory", entry_path);
 		}
 
