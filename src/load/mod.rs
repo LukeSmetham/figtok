@@ -13,18 +13,13 @@ fn read_file(filepath: &String) -> Result<String, Box<dyn Error>> {
 
 #[derive(Debug)]
 pub struct Loader {
-    pub path: String,
-    pub out: String,
     pub tokens: HashMap<String, TokenDefinition>,
     pub token_sets: HashMap<String, Vec<String>>,
     pub themes: HashMap<String, HashMap<String, String>>,
 }
 impl Loader {
-    pub fn new(path: &str, out: &str) -> Loader {
-        fs::create_dir_all(out).unwrap();
+    pub fn new() -> Loader {
         Loader {
-            path: path.to_string(),
-            out: out.to_string(),
             tokens: HashMap::new(),
             token_sets: HashMap::new(),
             themes: HashMap::new(),
@@ -103,8 +98,8 @@ impl Loader {
         }
     }
 
-    fn load_tokens(&mut self) {
-        let metadata_path = &mut self.path.clone();
+    fn load_tokens(&mut self, path: &String) {
+        let metadata_path = &mut path.clone();
         metadata_path.push_str("/$metadata.json");
 
         // This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
@@ -144,8 +139,8 @@ impl Loader {
         }
     }
 
-    fn load_themes(&mut self) {
-        let themes_path = &mut self.path.clone();
+    fn load_themes(&mut self, path: &String) {
+        let themes_path = &mut path.clone();
         themes_path.push_str("/$themes.json");
 
         // Use themes_path to get the $themes.json file with serde
@@ -176,8 +171,8 @@ impl Loader {
     }
 
     /// Loads all the tokens from the input directory into memory.
-    pub fn load(&mut self) {
-        self.load_tokens();
-        self.load_themes();
+    pub fn load(&mut self, input_path: &String) {
+        self.load_tokens(input_path);
+        self.load_themes(input_path);
     }
 }

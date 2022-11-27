@@ -1,3 +1,5 @@
+use serde_derive::{Serialize, Deserialize};
+
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]

@@ -8,24 +8,22 @@ use crate::{
 
 use super::{utils, Serializer};
 
-pub struct CssSerializer {
-    loader: Loader,
-}
+pub struct CssSerializer {}
 impl CssSerializer {
-	pub fn new(loader: Loader) -> CssSerializer {
-        CssSerializer { loader: loader }
+	pub fn new() -> CssSerializer {
+        CssSerializer {}
     }
 
-	fn serialize_token_sets(&self) {
+	fn serialize_token_sets(&self, loader: &Loader, output_path: &String) {
 		// Loop over the token sets and create a CSS file for each
-        for (set_name, token_set) in &self.loader.token_sets {
+        for (set_name, token_set) in &loader.token_sets {
 			// init the string that will hold our css file
             let mut value = String::new();
 			// add the opening line
             value.push_str(":root{");
             for id in token_set { // serialize each token to a CSS String and add it to value
-                let token = &self.loader.tokens[id];
-                value.push_str(self.serialize_one(token).as_str());
+                let token = &loader.tokens[id];
+                value.push_str(self.serialize_one(&loader, &token).as_str());
             }
 			// add the final curly bracket
             value.push_str("}");
@@ -40,16 +38,16 @@ impl CssSerializer {
 			};
 
 			// Ensure the directories we need exist
-            fs::create_dir_all(vec![self.loader.out.clone(), dir.to_string()].join("/")).unwrap();
+            fs::create_dir_all(vec![output_path.clone(), dir.to_string()].join("/")).unwrap();
 			// Write the css file.
-            let _ = fs::write(format!("{}/{}.css", &self.loader.out, set_name), value);
+            let _ = fs::write(format!("{}/{}.css", output_path, set_name), value);
         }
 	}
 
-	fn serialize_themes(&self) {
+	fn serialize_themes(&self, loader: &Loader, output_path: &String) {
 		// TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
         // Iterate over the themes and create import statements for each included set.
-        for (name, sets) in &self.loader.themes {
+        for (name, sets) in &loader.themes {
             let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
 
             let mut value = String::new();
@@ -65,7 +63,7 @@ impl CssSerializer {
             let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
 
             let _ = fs::write(
-                format!("{}/{}.css", &self.loader.out, name_parts.join("-")),
+                format!("{}/{}.css", output_path, name_parts.join("-")),
                 value,
             );
         }
@@ -75,13 +73,9 @@ impl Serializer for CssSerializer {
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
-    fn run(&self) -> Result<(), Box<dyn Error>> {
-		// TODO: Remove any existing output (clear the build dir) before running.
+    fn run(&self, loader: &Loader, output_path: String) -> Result<(), Box<dyn Error>> {
 
-		// Ensure the output directory exists
-		fs::create_dir_all(&self.loader.out).unwrap();
-
-        self.serialize_token_sets();
+        self.serialize_token_sets(loader, &output_path);
 
 		// Themes are not just collections of tokens, but collection of sets. 
 		// We already output each set as a CSS file above, so all we need are
@@ -91,15 +85,15 @@ impl Serializer for CssSerializer {
 		// or for things like composition tokens, we may want a 
 		// way to also write classes, or namespace variables 
 		// via class name/id inside the themes root css file.
-		self.serialize_themes();
+		self.serialize_themes(loader, &output_path);
 
         Ok(())
     }
 
 	/// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
 	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
-    fn serialize_one(&self, token: &TokenDefinition) -> String {
-        let value = utils::get_token_value(&self.loader, token);
+    fn serialize_one(&self, loader: &Loader, token: &TokenDefinition) -> String {
+        let value = utils::get_token_value(loader, token);
         format!("--{}: {};", token.name.replace(".", "-"), value)
     }
 }

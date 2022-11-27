@@ -9,15 +9,7 @@ extern crate serde_json;
 
 extern crate once_cell;
 
-mod helpers;
-mod tokens;
-mod load;
-mod serialize;
-
-use load::Loader;
-use serialize::CssSerializer;
-
-use crate::serialize::Serializer;
+use figtok::Figtok;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -25,33 +17,23 @@ struct Args {
    /// The directory containing your tokens.
    #[arg(short, long, default_value = "./tokens")]
    dir: String,
-
-   /// The format to output the tokens to. Currently only supports CSS.
-   #[arg(short, long, default_value = "css")]
-   format: String,
-
+   
    /// The directory the output should be written to.
    #[arg(short, long, default_value = "./build")]
-   out: String
+   out: String,
+   
+	/// The format to output the tokens to. Currently only supports CSS.
+	#[arg(short, long, default_value = "css")]
+	format: String,
 }
 
 fn main() {
 	let args = Args::parse();
 
-	if args.format != "css" {
-		panic!("Outputting your tokens to {} is not yet supported.", args.format);
-	}
+	let mut figtok = Figtok::create(&args.dir, &args.out, &args.format).unwrap();
 
-	// Check if the input directory exists
-	if !Path::new(&args.dir).is_dir() {
-		panic!("No {} directory found, passed as input directory", args.dir);
-	}
-
-	let mut loader = Loader::new(&args.dir, &args.out);
-	loader.load();
-
-	let serializer = CssSerializer::new(loader);
-	let _ = serializer.run();
+	figtok.load();
+	figtok.export();
 
 	println!("Done! Check {} for the output CSS", args.out);
 }
