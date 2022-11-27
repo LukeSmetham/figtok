@@ -1,5 +1,7 @@
 pub mod helpers;
 
+use std::collections::HashMap;
+
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -38,3 +40,5 @@ pub struct TokenDefinition {
 	#[serde(default)]
 	pub id: String,
 }
+
+pub type TokenSet = HashMap<String, serde_json::Value>;
