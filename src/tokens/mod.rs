@@ -16,6 +16,8 @@ pub enum TokenKind {
     FontFamily,
 	#[serde(alias = "fontSizes")]
 	FontSize,
+	#[serde(alias = "fontWeights")]
+	FontWeights,
 	#[serde(alias = "letterSpacing")]
 	LetterSpacing,
 	#[serde(alias = "lineHeights")]
