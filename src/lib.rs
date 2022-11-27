@@ -12,18 +12,19 @@ pub mod serialize;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+
 use load::Loader;
 use serialize::Serializer;
 
-pub struct Figtok<T: Serializer> {
+pub struct Figtok<T: Loader, U: Serializer> {
 	entry_path: String,
 	output_path: String,
 
-	pub loader: Loader,
-	pub serializer: T
+	pub loader: T,
+	pub serializer: U
 }
-impl <T: Serializer> Figtok<T> {
-	pub fn create(entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
+impl <T: Loader, U: Serializer> Figtok<T, U> {
+	pub fn create(entry_path: &String, output_path: &String) -> Result<Figtok<T, U>, Box<dyn Error>> {
 		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
 		if Path::new(&output_path).is_dir() {
 			fs::remove_dir_all(&output_path).unwrap();
@@ -41,8 +42,8 @@ impl <T: Serializer> Figtok<T> {
 			Figtok {
 				entry_path: entry_path.clone(),
 				output_path: output_path.clone(),
-				loader: Loader::new(),
-				serializer: T::new()
+				loader: T::new(),
+				serializer: U::new()
 			}
 		)
 	}

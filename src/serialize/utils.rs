@@ -8,7 +8,7 @@ use regex::{Captures};
 
 /// Tests if a value is a static value or a reference. If static it's returned as is,
 /// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
-pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
+pub fn get_token_value<T: Loader>(loader: &T, token: &TokenDefinition) -> String {
     // Check if the original_value contains handlebar syntax with a reference to another token.
     let mut value = if REGEX_HB.is_match(&token.value) {
         REGEX_HB.replace_all(&token.value, |caps: &Captures| {
@@ -17,7 +17,7 @@ pub fn get_token_value(loader: &Loader, token: &TokenDefinition) -> String {
             let ref_name = &caps[1];
 
             // Find the token using the ref_name.
-            match loader.tokens.values().find(|t| t.name == ref_name) {
+            match loader.get_tokens().values().find(|t| t.name == ref_name) {
                 Some(t) => {
                     // If we find a token
                     // Replace the reference string with a css variable that points to the other token.

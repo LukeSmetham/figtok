@@ -9,6 +9,6 @@ use crate::{tokens::TokenDefinition, load::Loader};
 
 pub trait Serializer {
 	fn new() -> Self;
-	fn run(&self, loader: &Loader, output_path: String) -> Result<(), Box<dyn Error>>;
-	fn serialize_one(&self, loader: &Loader, token: &TokenDefinition) -> String;
+	fn run(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>>;
+	fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> String;
 }

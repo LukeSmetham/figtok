@@ -1,4 +1,5 @@
 use figtok::Figtok;
+use figtok::load::JSONLoader;
 use figtok::serialize::CssSerializer;
 use clap::Parser;
 
@@ -27,7 +28,7 @@ fn main() {
 	}
 
 	
-	let mut figtok = Figtok::<CssSerializer>::create(&args.entry, &args.output).unwrap();
+	let mut figtok = Figtok::<JSONLoader, CssSerializer>::create(&args.entry, &args.output).unwrap();
 
     figtok.load();
     figtok.export();
