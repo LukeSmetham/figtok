@@ -6,14 +6,14 @@ use crate::tokens::{TokenDefinition, TokenKind};
 use crate::tokens::helpers::{REGEX_HB};
 
 #[derive(Debug)]
-pub struct JSONLoader {
+pub struct JsonLoader {
     pub tokens: HashMap<String, TokenDefinition>,
     pub token_sets: HashMap<String, Vec<String>>,
     pub themes: HashMap<String, HashMap<String, String>>,
 }
-impl Loader for JSONLoader {
-	fn new() -> JSONLoader {
-        JSONLoader {
+impl Loader for JsonLoader {
+	fn new() -> JsonLoader {
+        JsonLoader {
             tokens: HashMap::new(),
             token_sets: HashMap::new(),
             themes: HashMap::new(),
@@ -38,7 +38,7 @@ impl Loader for JSONLoader {
 		&self.themes
 	}
 }
-impl JSONLoader {
+impl JsonLoader {
     /// Recursively iterate through the token JSON, and add the data to self.tokens
     fn parse_token_set(
         &mut self,
