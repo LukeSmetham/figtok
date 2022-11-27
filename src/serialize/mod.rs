@@ -5,9 +5,10 @@ mod utils;
 
 use std::error::Error;
 
-use crate::tokens::TokenDefinition;
+use crate::{tokens::TokenDefinition, load::Loader};
 
 pub trait Serializer {
-	fn run(&self) -> Result<(), Box<dyn Error>>;
-	fn serialize_one(&self, token: &TokenDefinition) -> String;
+	fn new() -> Self;
+	fn run(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>>;
+	fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> String;
 }
