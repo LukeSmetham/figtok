@@ -1,3 +1,9 @@
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+
+extern crate once_cell;
+
 mod helpers;
 mod tokens;
 mod load;
@@ -20,7 +26,7 @@ impl Figtok {
 	pub fn create(path: &String, out: &String, format: &String) -> Result<Figtok, Box<dyn Error>> {
 		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
 		if Path::new(&out).is_dir() {
-			fs::remove_dir(&out).unwrap();
+			fs::remove_dir_all(&out).unwrap();
 		}
 
 		// Now ensure the out dir exists.
