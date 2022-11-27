@@ -45,7 +45,11 @@ impl Loader for JsonLoader {
 				let mut token_sets: HashMap<String, TokenSet> = HashMap::new();
 
 				for slug in serde_json::from_value::<Vec<String>>(metadata.get("tokenSetOrder").unwrap().to_owned()).unwrap() {
-					let token_set: TokenSet = serde_json::from_value(data.get(&slug).unwrap().to_owned()).unwrap();
+					
+					let token_set: TokenSet = serde_json::from_value(
+						data.get(&slug).unwrap().to_owned()
+					).unwrap();
+
 					token_sets.insert(slug.clone(), token_set);
 				}
 
