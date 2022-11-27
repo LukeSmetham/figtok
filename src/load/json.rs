@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use super::{Loader, utils::read_file};
 use crate::tokens::{TokenDefinition, TokenKind};
-use crate::helpers::{REGEX_HB};
+use crate::tokens::helpers::{REGEX_HB};
 
 #[derive(Debug)]
 pub struct JSONLoader {

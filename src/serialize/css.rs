@@ -6,7 +6,10 @@ use crate::{
     tokens::{TokenDefinition}
 };
 
-use super::{utils, Serializer};
+use super::{
+	Serializer,
+	utils
+};
 
 pub struct CssSerializer {}
 impl CssSerializer {
