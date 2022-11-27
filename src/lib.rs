@@ -28,7 +28,6 @@ impl Figtok {
 		if Path::new(&out).is_dir() {
 			fs::remove_dir_all(&out).unwrap();
 		}
-
 		// Now ensure the out dir exists.
 		fs::create_dir_all(&out).unwrap();
 
