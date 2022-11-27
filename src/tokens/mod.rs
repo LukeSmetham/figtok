@@ -6,6 +6,8 @@ use serde_derive::{Serialize, Deserialize};
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
     BorderRadius,
+	#[serde(alias = "borderWidth")]
+	BorderWidth,
     #[serde(alias = "color")]
     Color,
     #[serde(alias = "fontFamilies")]
@@ -16,6 +18,10 @@ pub enum TokenKind {
 	LetterSpacing,
 	#[serde(alias = "lineHeights")]
 	LineHeight,
+	#[serde(alias = "opacity")]
+	Opacity,
+	#[serde(alias = "sizing")]
+	Sizing,
     #[serde(alias = "spacing")]
     Spacing,
     #[serde(alias = "other")]

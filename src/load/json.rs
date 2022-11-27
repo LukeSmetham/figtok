@@ -75,10 +75,13 @@ impl JsonLoader {
                             token
                         }
                         TokenKind::BorderRadius => token,
+                        TokenKind::BorderWidth => token,
                         TokenKind::FontFamily => token,
                         TokenKind::FontSize => token,
                         TokenKind::LetterSpacing => token,
                         TokenKind::LineHeight => token,
+						TokenKind::Opacity => token,
+                        TokenKind::Sizing => token,
                         TokenKind::Spacing => token,
                         TokenKind::Other => token,
                     };
