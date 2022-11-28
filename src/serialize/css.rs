@@ -20,12 +20,15 @@ impl CssSerializer {
         for (set_name, token_set) in loader.get_token_sets() {
 			// init the string that will hold our css file
             let mut value = String::new();
+
 			// add the opening line
             value.push_str(":root{");
+
             for id in token_set { // serialize each token to a CSS String and add it to value
                 let token = &loader.get_tokens()[id];
                 value.push_str(self.serialize_one(loader, &token).as_str());
             }
+
 			// add the final curly bracket
             value.push_str("}");
 
@@ -78,7 +81,7 @@ impl Serializer for CssSerializer {
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
-    fn run(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
+    fn serialize(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
 
         self.serialize_token_sets(loader, &output_path);
 

@@ -52,6 +52,6 @@ impl <T: Loader, U: Serializer> Figtok<T, U> {
 	}
 	
 	pub fn export(&self) {
-		let _ = self.serializer.run(&self.loader, self.output_path.to_owned());
+		let _ = self.serializer.serialize(&self.loader, self.output_path.to_owned());
 	}
 }
