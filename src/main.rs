@@ -22,13 +22,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-	// TODO We only support CSS right now and use it as default, so this check should only trip if the user specifically tries to export with a different format.
-	if args.format != "css" {
-		panic!("Outputting your tokens to {} is not yet supported.", args.format);
-	}
-
-	
-	let mut figtok = Figtok::<JsonLoader, CssSerializer>::create(&args.entry, &args.output).unwrap();
+	let mut figtok = match args.format.as_str() {
+		"css" => {
+			Figtok::<JsonLoader, CssSerializer>::create(&args.entry, &args.output).unwrap()
+		},
+		x => {
+			panic!("Outputting to {} is not yet support", x)
+		}
+	};
 
     figtok.load();
     figtok.export();
