@@ -4,6 +4,7 @@ use crate::{
     tokens::{TokenDefinition, TokenKind},
 };
 
+use serde_json;
 use regex::Captures;
 
 /// Tests if a value is a static value or a reference. If static it's returned as is,
