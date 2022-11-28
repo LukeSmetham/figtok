@@ -32,10 +32,8 @@ impl JsonSerializer {
 
 			// Ensure the directories we need exist
             fs::create_dir_all(vec![output_path.clone(), dir.to_string()].join("/")).unwrap();
-			// Write the css file.
-            let _ = fs::write(format!("{}/{}.json", output_path, set_name), value.to_string());
-			
-			println!("{}: {:?}", set_name, value);
+			// Write the json file.
+            let _ = fs::write(format!("{}/{}.{}", output_path, set_name, "json"), value.to_string());
 		}
 	}
 
@@ -43,7 +41,7 @@ impl JsonSerializer {
 		let mut key_parts = token.name.split(".").collect::<Vec<&str>>();
 		key_parts.reverse();
 
-        let value = utils::get_token_value(loader, token);
+        let value = utils::get_token_value(loader, token, utils::ReplaceMethod::StaticValues, false);
 		
 		let mut j = json!(value);
 		for key in key_parts {
@@ -61,6 +59,7 @@ impl Serializer for JsonSerializer {
 	fn serialize(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
 		self.serialize_token_sets(loader, &output_path);
 
+		// TODO: Serialize Themes.
 		Ok(())
 	}
 }

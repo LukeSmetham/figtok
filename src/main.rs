@@ -1,6 +1,6 @@
 use figtok::Figtok;
 use figtok::load::JsonLoader;
-use figtok::serialize::{JsonSerializer};
+use figtok::serialize::{JsonSerializer, CssSerializer};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -24,7 +24,7 @@ fn main() {
 
 	let mut figtok = match args.format.as_str() {
 		"css" => {
-			Figtok::<JsonLoader, JsonSerializer>::create(&args.entry, &args.output).unwrap()
+			Figtok::<JsonLoader, CssSerializer>::create(&args.entry, &args.output).unwrap()
 		},
 		x => {
 			panic!("Outputting to {} is not yet support", x)

@@ -4,12 +4,21 @@ use crate::{
     tokens::{TokenDefinition, TokenKind},
 };
 
-use serde_json;
 use regex::Captures;
+
+#[derive(Clone, Copy)]
+pub enum ReplaceMethod {
+	CssVariables,
+	StaticValues,
+}
+
+fn to_variable_name(name: &String) -> String {
+	format!("var(--{})", name.replace(".", "-"))
+}
 
 /// Tests if a value is a static value or a reference. If static it's returned as is,
 /// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
-pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition) -> String {
+pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition, replace_method: ReplaceMethod, nested: bool) -> String {
     // Check if the original_value contains handlebar syntax with a reference to another token.
     let mut value = if REGEX_HB.is_match(&token.value) {
         REGEX_HB
@@ -21,30 +30,62 @@ pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition) -> String 
                 // Find the token using the ref_name.
                 match loader.get_tokens().values().find(|t| t.name == ref_name) {
                     Some(t) => {
-                        // If we find a token
-                        // Replace the reference string with a css variable that points to the other token.
-                        let mut new_value = REGEX_HB
-                            .replace(&caps[0], format!("var(--{})", t.name.replace(".", "-")))
+						// If we find a token
+                        // Replace the handlebar ref with a css variable that points to the relevant variable for the referenced token.
+
+						let replacement = match replace_method {
+							ReplaceMethod::CssVariables => {
+								to_variable_name(&t.name)
+							},
+							ReplaceMethod::StaticValues => {
+								// when returning a static value, we recursively call get_token_value to ensure we have
+								// unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
+								get_token_value(loader, &t, replace_method, true)
+							}
+						};
+
+                        let mut value_str = REGEX_HB
+                            .replace(&caps[0], replacement)
                             .to_string();
 
-                        if !token.value.starts_with("rgb") && token.kind == TokenKind::Color {
-                            new_value = format!("rgb({})", new_value);
-                        }
+						if !nested {
+							// If we are not nested in this iteration, check the token.kind value and apply any
+							// final transformations. e.g. We convert all colors to rgb/rgba when parsing, so any
+							// color token that doesn't already start with RGB should be wrapped with `rgb()`
+							value_str = match &token.kind {
+								TokenKind::Color => {
+									if !token.value.starts_with("rgb") {
+										value_str = format!("rgb({})", value_str);
+									}
+									value_str
+								},
+								_ => value_str
+							}
+						}
 
-                        new_value
+						value_str
                     }
                     None => {
-                        let mut new_value = REGEX_HB
+						let replacement = match replace_method {
+							ReplaceMethod::CssVariables => {
+								to_variable_name(&String::from(ref_name))
+							},
+							ReplaceMethod::StaticValues => {
+								String::from("ERR_NOT_FOUND")
+							}
+						};
+
+                        let mut value_str = REGEX_HB
                             .replace_all(
                                 &token.value.to_string(),
-                                format!("var(--{})", ref_name.replace(".", "-")),
+                                replacement,
                             )
                             .to_string();
 
-                        if !token.value.starts_with("rgb") && token.kind == TokenKind::Color {
-                            new_value = format!("rgb({})", new_value);
+                        if !nested && !token.value.starts_with("rgb") && token.kind == TokenKind::Color {
+                            value_str = format!("rgb({})", value_str);
                         }
-                        new_value
+                        value_str
                     }
                 }
             })
