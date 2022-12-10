@@ -8,8 +8,8 @@ mod utils;
 
 use std::error::Error;
 
-use crate::{load::Loader};
+use crate::Figtok;
 
-pub trait Serializer<T: Loader> {
-	fn serialize(&self, loader: &T, output_path: String) -> Result<(), Box<dyn Error>>;
+pub trait Serializer {
+	fn serialize(&self, ctx: &Figtok) -> Result<(), Box<dyn Error>>;
 }

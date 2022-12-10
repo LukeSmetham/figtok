@@ -5,27 +5,32 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-pub mod load;
-pub mod serialize;
+use tokens::TokenDefinition;
 
-use std::error::Error;
+pub mod load;
+use load::load;
+
+pub mod serialize;
+use serialize::{Serializer, CssSerializer, JsonSerializer};
+
+use std::{error::Error, collections::HashMap};
 use std::fs;
 use std::path::Path;
 
-use load::Loader;
-use serialize::{Serializer, CssSerializer, JsonSerializer};
-
-pub struct Figtok<T: Loader> {
+pub struct Figtok {
     entry_path: String,
     output_path: String,
 
-    pub loader: T,
-    pub serializer: Box<dyn Serializer<T>>,
+	pub tokens: HashMap<String, TokenDefinition>,
+    pub token_sets: HashMap<String, Vec<String>>,
+    pub themes: HashMap<String, HashMap<String, String>>,
+
+    pub serializer: Box<dyn Serializer>,
 }
 
-impl <T: Loader + Default> Figtok<T> {
-    pub fn create(format: &String, entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
-		let serializer: Box<dyn Serializer<T>> = match format.as_str() {
+impl Figtok {
+    pub fn create(format: &String, entry_path: &String, output_path: &String) -> Result<Figtok, Box<dyn Error>> {
+		let serializer: Box<dyn Serializer> = match format.as_str() {
 			"css" => Box::new(CssSerializer::new()),
 			"json" => Box::new(JsonSerializer::new()),
 			f => panic!("Unsupported output format {}", f)
@@ -34,7 +39,9 @@ impl <T: Loader + Default> Figtok<T> {
 		let ft = Figtok {
 			entry_path: entry_path.clone(),
 			output_path: output_path.clone(),
-			loader: T::default(),
+			tokens: HashMap::new(),
+            token_sets: HashMap::new(),
+            themes: HashMap::new(),
 			serializer,
 		};
 
@@ -64,10 +71,22 @@ impl <T: Loader + Default> Figtok<T> {
 	}
 
     pub fn load(&mut self) {
-        let _ = &mut self.loader.load(&self.entry_path);
+		load(self);
     }
 
-    pub fn export(&self) {
-        let _ = self.serializer.serialize(&self.loader, self.output_path.to_owned());
+    pub fn export(&mut self) {
+        let _ = self.serializer.serialize(self);
     }
+
+	pub fn get_tokens(&self) -> &HashMap<String, TokenDefinition> {
+		&self.tokens
+	}
+
+	pub fn get_token_sets(&self) -> &HashMap<String, Vec<String>> {
+		&self.token_sets
+	}
+
+	pub fn get_themes(&self) -> &HashMap<String, HashMap<String, String>> {
+		&self.themes
+	}
 }

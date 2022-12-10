@@ -2,8 +2,7 @@ use std::{error::Error, default::Default, fs};
 use serde_json::json;
 use merge_struct::merge;
 
-use crate::tokens::TokenDefinition;
-use crate::load::Loader;
+use crate::{tokens::TokenDefinition, Figtok};
 
 use super::{
 	Serializer,
@@ -17,13 +16,13 @@ impl JsonSerializer {
 		JsonSerializer{}
 	}
 
-	pub fn serialize_token_sets(&self, loader: &impl Loader, output_path: &String) {
-		for (set_name, token_set) in loader.get_token_sets() {
+	pub fn serialize_token_sets(&self, ctx: &Figtok) {
+		for (set_name, token_set) in ctx.get_token_sets() {
 			let mut value = serde_json::from_str("{}").unwrap();
 
 			for id in token_set {
-				let token = &loader.get_tokens()[id];
-				value = merge(&value, &self.serialize_one(loader, &token)).unwrap();
+				let token = &ctx.get_tokens()[id];
+				value = merge(&value, &self.serialize_one(ctx, &token)).unwrap();
 			}
 
 			// Now we make sure the output directory exists, and write the CSS file to disk
@@ -36,17 +35,17 @@ impl JsonSerializer {
 			};
 
 			// Ensure the directories we need exist
-            fs::create_dir_all(vec![output_path.clone(), dir.to_string()].join("/")).unwrap();
+            fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
 			// Write the json file.
-            let _ = fs::write(format!("{}/{}.{}", output_path, set_name, "json"), value.to_string());
+            let _ = fs::write(format!("{}/{}.{}", ctx.output_path, set_name, "json"), value.to_string());
 		}
 	}
 
-	fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> serde_json::Value {
+	fn serialize_one(&self, ctx: &Figtok, token: &TokenDefinition) -> serde_json::Value {
 		let mut key_parts = token.name.split(".").collect::<Vec<&str>>();
 		key_parts.reverse();
 
-        let value = utils::get_token_value(loader, token, utils::ReplaceMethod::StaticValues, false);
+        let value = utils::get_token_value(ctx, token, utils::ReplaceMethod::StaticValues, false);
 		
 		let mut j = json!(value);
 		for key in key_parts {
@@ -56,37 +55,13 @@ impl JsonSerializer {
 		j
     }
 }
-impl <T:Loader> Serializer<T> for JsonSerializer {
-	fn serialize(&self, loader: &T, output_path: String) -> Result<(), Box<dyn Error>> {
-		self.serialize_token_sets(loader, &output_path);
+impl Serializer for JsonSerializer {
+	fn serialize(&self, ctx: &Figtok) -> Result<(), Box<dyn Error>> {
+		self.serialize_token_sets(ctx);
 
 		// TODO: Serialize Themes.
+		// Need to think of a way to serialize the themes as JSON as they are essentially just collections of sets, i.e. because we can't use references to other files in JSON
+
 		Ok(())
 	}
 }
-
-#[cfg(test)]
-mod test {
-    use crate::{load::{Loader, JsonLoader}, tokens::{TokenDefinition, TokenKind}};
-
-    use super::{JsonSerializer};
-
-	#[test]
-	fn test_serialize_one() {
-		let mut loader = JsonLoader::new();
-		loader.load(&String::from("./tokens/single_file_test.json"));
-
-		let serializer = JsonSerializer{};
-		let token = TokenDefinition {
-			name: String::from("ref.purple.1"),
-			id: String::from("purple.1"),
-			value: String::from("#03001d"),
-			kind: TokenKind::Color
-		};
-
-		let value = serializer.serialize_one(&loader, &token);
-		assert_eq!(value.to_string(), "{\"ref\":{\"purple\":{\"1\":\"#03001d\"}}}");
-	}
-}
-
-
