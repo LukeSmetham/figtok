@@ -21,9 +21,9 @@ pub struct Figtok {
     entry_path: String,
     output_path: String,
 
-	pub tokens: HashMap<String, TokenDefinition>,
-    pub token_sets: HashMap<String, Vec<String>>,
-    pub themes: HashMap<String, HashMap<String, String>>,
+	tokens: HashMap<String, TokenDefinition>,
+    token_sets: HashMap<String, Vec<String>>,
+    themes: HashMap<String, HashMap<String, String>>,
 
     pub serializer: Box<dyn Serializer>,
 }
