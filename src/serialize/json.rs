@@ -85,6 +85,8 @@ mod test {
 		};
 
 		let value = serializer.serialize_one(&loader, &token);
-		assert_eq!(value, "{\"ref-purple-1\":\"#03001d\"}");
+		assert_eq!(value.to_string(), "{\"ref\":{\"purple\":{\"1\":\"#03001d\"}}}");
 	}
 }
+
+
