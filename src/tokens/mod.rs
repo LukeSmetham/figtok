@@ -1,5 +1,7 @@
 pub mod helpers;
 
+use std::collections::HashMap;
+
 use serde_derive::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -14,6 +16,8 @@ pub enum TokenKind {
     FontFamily,
 	#[serde(alias = "fontSizes")]
 	FontSize,
+	#[serde(alias = "fontWeights")]
+	FontWeights,
 	#[serde(alias = "letterSpacing")]
 	LetterSpacing,
 	#[serde(alias = "lineHeights")]
@@ -30,11 +34,16 @@ pub enum TokenKind {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TokenDefinition {
+	/// The value from the original json file for this token. May be a static value, or a reference using handlebars syntax e.g. {color.purple.1}
     pub value: String,
+	/// Tells us what kind of token this is. Aliased from "type" field in the original json.
     #[serde(alias = "type")]
     pub kind: TokenKind,
+	/// The name field is constructed as the dot-notated selector for the value in the original JSON file. e.g. "color.purple.1"
 	#[serde(default)]
 	pub name: String,
 	#[serde(default)]
 	pub id: String,
 }
+
+pub type TokenSet = HashMap<String, serde_json::Value>;

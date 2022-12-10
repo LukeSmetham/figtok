@@ -1,5 +1,8 @@
+use std::default::Default;
 use std::error::Error;
 use std::fs;
+
+use convert_case::{Case, Casing};
 
 use crate::{
     load::Loader,
@@ -11,19 +14,27 @@ use super::{
 	utils
 };
 
+#[derive(Default)]
 pub struct CssSerializer {}
 impl CssSerializer {
+	pub fn new() -> Self {
+        CssSerializer {}
+    }
+
 	fn serialize_token_sets<T: Loader>(&self, loader: &T, output_path: &String) {
 		// Loop over the token sets and create a CSS file for each
         for (set_name, token_set) in loader.get_token_sets() {
 			// init the string that will hold our css file
             let mut value = String::new();
+
 			// add the opening line
             value.push_str(":root{");
+
             for id in token_set { // serialize each token to a CSS String and add it to value
                 let token = &loader.get_tokens()[id];
                 value.push_str(self.serialize_one(loader, &token).as_str());
             }
+
 			// add the final curly bracket
             value.push_str("}");
 
@@ -67,16 +78,19 @@ impl CssSerializer {
             );
         }
 	}
-}
-impl Serializer for CssSerializer {
-	fn new() -> CssSerializer {
-        CssSerializer {}
-    }
 
+	/// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
+	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
+    fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> String {
+        let value = utils::get_token_value(loader, token, utils::ReplaceMethod::CssVariables, false);
+        format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
+    }
+}
+impl <T:Loader> Serializer<T> for CssSerializer {
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
-    fn run(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
+    fn serialize(&self, loader: &T, output_path: String) -> Result<(), Box<dyn Error>> {
 
         self.serialize_token_sets(loader, &output_path);
 
@@ -92,11 +106,26 @@ impl Serializer for CssSerializer {
 
         Ok(())
     }
+}
 
-	/// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
-	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
-    fn serialize_one(&self, loader: &impl Loader, token: &TokenDefinition) -> String {
-        let value = utils::get_token_value(loader, token);
-        format!("--{}: {};", token.name.replace(".", "-"), value)
-    }
+#[cfg(test)]
+mod tests {
+    use crate::{serialize::{CssSerializer}, tokens::{TokenDefinition, TokenKind}, load::{Loader, JsonLoader}};
+
+	#[test]
+	fn test_serialize_one() {
+		let mut loader = JsonLoader::new();
+		loader.load(&String::from("./tokens/single_file_test.json"));
+
+		let serializer = CssSerializer{};
+		let token = TokenDefinition {
+			name: String::from("ref.purple.1"),
+			id: String::from("purple.1"),
+			value: String::from("#03001d"),
+			kind: TokenKind::Color
+		};
+
+		let value = serializer.serialize_one(&loader, &token);
+		assert_eq!(value, "--ref-purple-1: #03001d;");
+	}
 }
