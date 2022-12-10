@@ -1,4 +1,4 @@
-use std::{error::Error, fs};
+use std::{error::Error, default::Default, fs};
 use serde_json::json;
 use merge_struct::merge;
 
@@ -10,8 +10,13 @@ use super::{
 	utils,
 };
 
+#[derive(Default)]
 pub struct JsonSerializer {}
 impl JsonSerializer {
+	pub fn new() -> Self {
+		JsonSerializer{}
+	}
+
 	pub fn serialize_token_sets(&self, loader: &impl Loader, output_path: &String) {
 		for (set_name, token_set) in loader.get_token_sets() {
 			let mut value = serde_json::from_str("{}").unwrap();
@@ -51,12 +56,8 @@ impl JsonSerializer {
 		j
     }
 }
-impl Serializer for JsonSerializer {
-	fn new() -> Self {
-		JsonSerializer{}
-	}
-
-	fn serialize(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
+impl <T:Loader> Serializer<T> for JsonSerializer {
+	fn serialize(&self, loader: &T, output_path: String) -> Result<(), Box<dyn Error>> {
 		self.serialize_token_sets(loader, &output_path);
 
 		// TODO: Serialize Themes.

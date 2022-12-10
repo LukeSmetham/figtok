@@ -1,3 +1,4 @@
+use std::default::Default;
 use std::error::Error;
 use std::fs;
 
@@ -13,8 +14,13 @@ use super::{
 	utils
 };
 
+#[derive(Default)]
 pub struct CssSerializer {}
 impl CssSerializer {
+	pub fn new() -> Self {
+        CssSerializer {}
+    }
+
 	fn serialize_token_sets<T: Loader>(&self, loader: &T, output_path: &String) {
 		// Loop over the token sets and create a CSS file for each
         for (set_name, token_set) in loader.get_token_sets() {
@@ -80,15 +86,11 @@ impl CssSerializer {
         format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
     }
 }
-impl Serializer for CssSerializer {
-	fn new() -> CssSerializer {
-        CssSerializer {}
-    }
-
+impl <T:Loader> Serializer<T> for CssSerializer {
 	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
-    fn serialize(&self, loader: &impl Loader, output_path: String) -> Result<(), Box<dyn Error>> {
+    fn serialize(&self, loader: &T, output_path: String) -> Result<(), Box<dyn Error>> {
 
         self.serialize_token_sets(loader, &output_path);
 

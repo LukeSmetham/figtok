@@ -1,5 +1,6 @@
 use colors_transform::{Color, Rgb};
 use std::collections::HashMap;
+use std::default::Default;
 
 use super::{utils::read_file, Loader};
 use crate::tokens::helpers::REGEX_HB;
@@ -10,7 +11,7 @@ enum FileMode {
 	MultiFile
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct JsonLoader {
     pub tokens: HashMap<String, TokenDefinition>,
     pub token_sets: HashMap<String, Vec<String>>,
