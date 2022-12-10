@@ -21,7 +21,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-	let mut figtok = Figtok::<JsonLoader>::create(&args.entry, &args.output).unwrap();
+	let mut figtok = Figtok::<JsonLoader>::create(&args.format, &args.entry, &args.output).unwrap();
 
     figtok.load();
     figtok.export();

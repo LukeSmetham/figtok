@@ -13,7 +13,7 @@ use std::fs;
 use std::path::Path;
 
 use load::Loader;
-use serialize::{Serializer, CssSerializer};
+use serialize::{Serializer, CssSerializer, JsonSerializer};
 
 pub struct Figtok<T: Loader> {
     entry_path: String,
@@ -24,12 +24,18 @@ pub struct Figtok<T: Loader> {
 }
 
 impl <T: Loader + Default> Figtok<T> {
-    pub fn create(entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
+    pub fn create(format: &String, entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
+		let serializer: Box<dyn Serializer<T>> = match format.as_str() {
+			"css" => Box::new(CssSerializer::new()),
+			"json" => Box::new(JsonSerializer::new()),
+			f => panic!("Unsupported output format {}", f)
+		};
+
 		let ft = Figtok {
 			entry_path: entry_path.clone(),
 			output_path: output_path.clone(),
 			loader: T::default(),
-			serializer: Box::new(CssSerializer::new()),
+			serializer,
 		};
 
 		let _ = ft.prepare();
