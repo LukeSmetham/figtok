@@ -5,7 +5,7 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-use tokens::TokenDefinition;
+use tokens::{TokenDefinition, Tokens, TokenSet, TokenSets, Themes, Theme};
 
 pub mod load;
 use load::load;
@@ -21,9 +21,9 @@ pub struct Figtok {
     entry_path: String,
     output_path: String,
 
-	tokens: HashMap<String, TokenDefinition>,
-    token_sets: HashMap<String, Vec<String>>,
-    themes: HashMap<String, HashMap<String, String>>,
+	tokens: Tokens,
+    token_sets: TokenSets,
+    themes: Themes,
 
     pub serializer: Box<dyn Serializer>,
 }
@@ -78,15 +78,27 @@ impl Figtok {
         let _ = self.serializer.serialize(self);
     }
 
-	pub fn get_tokens(&self) -> &HashMap<String, TokenDefinition> {
+	pub fn get_tokens(&self) -> &Tokens {
 		&self.tokens
 	}
 
-	pub fn get_token_sets(&self) -> &HashMap<String, Vec<String>> {
+	pub fn get_token_sets(&self) -> &TokenSets {
 		&self.token_sets
 	}
 
-	pub fn get_themes(&self) -> &HashMap<String, HashMap<String, String>> {
+	pub fn get_themes(&self) -> &Themes {
 		&self.themes
+	}
+
+	pub fn add_token(&mut self, key: String, value: TokenDefinition) {
+		self.tokens.insert(key, value);
+	}
+	
+	pub fn add_token_set(&mut self, key: String, value: TokenSet) {
+		self.token_sets.insert(key, value);
+	}
+
+	pub fn add_theme(&mut self, key: String, value: Theme) {
+		self.themes.insert(key, value);
 	}
 }

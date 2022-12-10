@@ -6,14 +6,14 @@ use std::collections::HashMap;
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
-use crate::tokens::{TokenDefinition, TokenKind, TokenSet};
+use crate::tokens::{TokenDefinition, TokenKind};
 
 enum FileMode {
 	SingleFile,
 	MultiFile
 }
 
-fn parse_token_sets(store: &mut Figtok, token_sets: HashMap<String, TokenSet>) {
+fn parse_token_sets(store: &mut Figtok, token_sets: HashMap<String, HashMap<String, serde_json::Value>>) {
 	// Parse all of the tokens and token_sets recursively.
 	for (slug, data) in token_sets {
 		// Prefix will hold individual portions of the property name, if a value is accessible at
@@ -22,7 +22,7 @@ fn parse_token_sets(store: &mut Figtok, token_sets: HashMap<String, TokenSet>) {
 		let mut prefix: Vec<String> = vec![];
 
 		// Insert a blank token set.
-		let _ = &store.token_sets.insert(slug.clone(), Vec::new());
+		let _ = &store.add_token_set(slug.clone(), Vec::new());
 
 		// Parse the token set
 		parse_token_set(store, &slug.to_string(), data, Some(&mut prefix));
@@ -47,7 +47,7 @@ fn parse_themes(store: &mut Figtok, themes: Vec<serde_json::Value>) {
 			.collect();
 
 		// Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
-		let _ = &store.themes.insert(theme_name, enabled_sets);
+		let _ = &store.add_theme(theme_name, enabled_sets);
 	}
 }
 
@@ -113,7 +113,7 @@ fn parse_token_set(
 					v.push(token.id.clone());
 				});
 
-				let _ = &store.tokens.insert(token.id.clone(), token);
+				let _ = &store.add_token(token.id.clone(), token);
 			}
 			None => {
 				// If the "type" property is not present, we have a nested object
@@ -134,6 +134,10 @@ pub fn load(store: &mut Figtok) {
 		false => FileMode::MultiFile,
 	};
 
+	// Load in the raw data using serde, either from a single json file, or by traversing
+	// all json files in the directory (entry_path)
+	// We can then pass these values to parse_token_sets and parse_themes respectively to
+	// consume the data and create Tokens, TokenSets and Themes. 
 	let (token_sets, themes) = match mode {
 		FileMode::SingleFile => {
 			let data: serde_json::Value = match serde_json::from_str(&read_file(&store.entry_path).unwrap()) {
@@ -144,11 +148,11 @@ pub fn load(store: &mut Figtok) {
 			let metadata = data.get("$metadata").unwrap();
 			let themes: Vec<serde_json::Value> = serde_json::from_value(data.get("$themes").unwrap().to_owned()).unwrap();
 
-			let mut token_sets: HashMap<String, TokenSet> = HashMap::new();
+			let mut token_sets: HashMap<String, HashMap<String, serde_json::Value>> = HashMap::new();
 
 			for slug in serde_json::from_value::<Vec<String>>(metadata.get("tokenSetOrder").unwrap().to_owned()).unwrap() {
 				
-				let token_set: TokenSet = serde_json::from_value(
+				let token_set: HashMap<String, serde_json::Value> = serde_json::from_value(
 					data.get(&slug).unwrap().to_owned()
 				).unwrap();
 
@@ -172,10 +176,14 @@ pub fn load(store: &mut Figtok) {
 				};
 			
 
-			let mut token_sets: HashMap<String, TokenSet> = HashMap::new();
+			// Init a new map to hold the token sets
+			let mut token_sets: HashMap<String, HashMap<String, serde_json::Value>> = HashMap::new();
 
+			// Using the tokenSetOrder array in the metadata file we can construct the path slugs for every json
+			// file that contains tokens. Below we read the files in order, and add them to the above HashMap 
+			// ready to be parsed.
 			for slug in metadata.get("tokenSetOrder").unwrap() {
-				let data: TokenSet = match read_file(&format!("./tokens/{}.json", &slug)) {
+				let data: HashMap<String, serde_json::Value> = match read_file(&format!("./tokens/{}.json", &slug)) {
 					Ok(file) => match serde_json::from_str(&file) {
 						Ok(data) => data,
 						Err(error) => panic!("Error parsing token set: {}", error),
