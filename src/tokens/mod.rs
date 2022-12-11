@@ -46,4 +46,8 @@ pub struct TokenDefinition {
 	pub id: String,
 }
 
-pub type TokenSet = HashMap<String, serde_json::Value>;
+pub type TokenSet = Vec<String>;
+pub type TokenSets = HashMap<String, TokenSet>;
+pub type Tokens = HashMap<String, TokenDefinition>;
+pub type Theme = HashMap<String, String>;
+pub type Themes = HashMap<String, Theme>;

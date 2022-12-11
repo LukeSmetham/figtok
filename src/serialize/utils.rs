@@ -1,7 +1,6 @@
 use crate::{
-    load::Loader,
     tokens::helpers::{REGEX_CALC, REGEX_HB},
-    tokens::{TokenDefinition, TokenKind},
+    tokens::{TokenDefinition, TokenKind}, Figtok,
 };
 
 use regex::Captures;
@@ -18,7 +17,7 @@ fn to_variable_name(name: &String) -> String {
 
 /// Tests if a value is a static value or a reference. If static it's returned as is,
 /// whereas if it is a reference we go and retrieve the ref'd token, and return it's value.
-pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition, replace_method: ReplaceMethod, nested: bool) -> String {
+pub fn get_token_value(ctx: &Figtok, token: &TokenDefinition, replace_method: ReplaceMethod, nested: bool) -> String {
     // Check if the original_value contains handlebar syntax with a reference to another token.
     let mut value = if REGEX_HB.is_match(&token.value) {
         REGEX_HB
@@ -28,7 +27,7 @@ pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition, replace_me
                 let ref_name = &caps[1];
 
                 // Find the token using the ref_name.
-                match loader.get_tokens().values().find(|t| t.name == ref_name) {
+                match ctx.tokens.values().find(|t| t.name == ref_name) {
                     Some(t) => {
 						// If we find a token
                         // Replace the handlebar ref with a css variable that points to the relevant variable for the referenced token.
@@ -40,7 +39,7 @@ pub fn get_token_value(loader: &impl Loader, token: &TokenDefinition, replace_me
 							ReplaceMethod::StaticValues => {
 								// when returning a static value, we recursively call get_token_value to ensure we have
 								// unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
-								get_token_value(loader, &t, replace_method, true)
+								get_token_value(ctx, &t, replace_method, true)
 							}
 						};
 

@@ -5,42 +5,49 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-pub mod load;
-pub mod serialize;
+use tokens::{TokenDefinition, Tokens, TokenSet, TokenSets, Themes, Theme};
 
-use std::error::Error;
+pub mod load;
+use load::load;
+
+pub mod serialize;
+use serialize::{Serializer, CssSerializer, JsonSerializer};
+
+use std::{error::Error, collections::HashMap};
 use std::fs;
 use std::path::Path;
 
-use load::Loader;
-use serialize::{Serializer, CssSerializer, JsonSerializer};
-
-pub struct Figtok<T: Loader> {
+pub struct Figtok {
     entry_path: String,
     output_path: String,
 
-    pub loader: T,
-    pub serializer: Box<dyn Serializer<T>>,
+	tokens: Tokens,
+    token_sets: TokenSets,
+    themes: Themes,
+
+    pub serializer: Box<dyn Serializer>,
 }
 
-impl <T: Loader + Default> Figtok<T> {
-    pub fn create(format: &String, entry_path: &String, output_path: &String) -> Result<Figtok<T>, Box<dyn Error>> {
-		let serializer: Box<dyn Serializer<T>> = match format.as_str() {
+impl Figtok {
+    pub fn new(format: &String, entry_path: &String, output_path: &String) -> Self {
+		let serializer: Box<dyn Serializer> = match format.as_str() {
 			"css" => Box::new(CssSerializer::new()),
 			"json" => Box::new(JsonSerializer::new()),
 			f => panic!("Unsupported output format {}", f)
 		};
 
-		let ft = Figtok {
+		let figtok = Figtok {
 			entry_path: entry_path.clone(),
 			output_path: output_path.clone(),
-			loader: T::default(),
+			tokens: HashMap::new(),
+            token_sets: HashMap::new(),
+            themes: HashMap::new(),
 			serializer,
 		};
 
-		let _ = ft.prepare();
+		let _ = figtok.prepare();
 
-        Ok(ft)
+		figtok
     }
 
 	fn prepare(&self) -> Result<(), Box<dyn Error>> {
@@ -64,10 +71,34 @@ impl <T: Loader + Default> Figtok<T> {
 	}
 
     pub fn load(&mut self) {
-        let _ = &mut self.loader.load(&self.entry_path);
+		load(self);
     }
 
     pub fn export(&self) {
-        let _ = self.serializer.serialize(&self.loader, self.output_path.to_owned());
-    }
+        self.serializer.serialize(self);
+	}
+
+	pub fn get_tokens(&self) -> &Tokens {
+		&self.tokens
+	}
+
+	pub fn get_token_sets(&self) -> &TokenSets {
+		&self.token_sets
+	}
+
+	pub fn get_themes(&self) -> &Themes {
+		&self.themes
+	}
+
+	pub fn add_token(&mut self, key: String, value: TokenDefinition) {
+		self.tokens.insert(key, value);
+	}
+	
+	pub fn add_token_set(&mut self, key: String, value: TokenSet) {
+		self.token_sets.insert(key, value);
+	}
+
+	pub fn add_theme(&mut self, key: String, value: Theme) {
+		self.themes.insert(key, value);
+	}
 }
