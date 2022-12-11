@@ -1,4 +1,4 @@
-use std::{error::Error, default::Default, fs};
+use std::{default::Default, fs};
 use serde_json::json;
 use merge_struct::merge;
 
@@ -11,6 +11,14 @@ use super::{
 
 #[derive(Default)]
 pub struct JsonSerializer {}
+impl Serializer for JsonSerializer {
+	fn serialize(&self, ctx: &Figtok) {
+		self.serialize_token_sets(ctx);
+
+		// TODO: Serialize Themes.
+		// Need to think of a way to serialize the themes as JSON as they are essentially just collections of sets, i.e. because we can't use references to other files in JSON
+	}
+}
 impl JsonSerializer {
 	pub fn new() -> Self {
 		JsonSerializer{}
@@ -54,14 +62,4 @@ impl JsonSerializer {
 
 		j
     }
-}
-impl Serializer for JsonSerializer {
-	fn serialize(&self, ctx: &Figtok) -> Result<(), Box<dyn Error>> {
-		self.serialize_token_sets(ctx);
-
-		// TODO: Serialize Themes.
-		// Need to think of a way to serialize the themes as JSON as they are essentially just collections of sets, i.e. because we can't use references to other files in JSON
-
-		Ok(())
-	}
 }

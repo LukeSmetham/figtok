@@ -1,5 +1,4 @@
 use std::default::Default;
-use std::error::Error;
 use std::fs;
 
 use convert_case::{Case, Casing};
@@ -15,6 +14,25 @@ use super::{
 
 #[derive(Default)]
 pub struct CssSerializer {}
+impl Serializer for CssSerializer {
+	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
+    /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
+    /// can be imported individually by the user for more granularity, or if they don't use themes.
+    fn serialize(&self, ctx: &Figtok) {
+
+        self.serialize_token_sets(ctx);
+
+		// Themes are not just collections of tokens, but collection of sets. 
+		// We already output each set as a CSS file above, so all we need are
+		// @import statements. 
+		// 
+		// However, for more complex setups in the future,
+		// or for things like composition tokens, we may want a 
+		// way to also write classes, or namespace variables 
+		// via class name/id inside the themes root css file.
+		self.serialize_themes(ctx);
+    }
+}
 impl CssSerializer {
 	pub fn new() -> Self {
         CssSerializer {}
@@ -85,24 +103,4 @@ impl CssSerializer {
         format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
     }
 }
-impl Serializer for CssSerializer {
-	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
-    /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
-    /// can be imported individually by the user for more granularity, or if they don't use themes.
-    fn serialize(&self, ctx: &Figtok) -> Result<(), Box<dyn Error>> {
 
-        self.serialize_token_sets(ctx);
-
-		// Themes are not just collections of tokens, but collection of sets. 
-		// We already output each set as a CSS file above, so all we need are
-		// @import statements. 
-		// 
-		// However, for more complex setups in the future,
-		// or for things like composition tokens, we may want a 
-		// way to also write classes, or namespace variables 
-		// via class name/id inside the themes root css file.
-		self.serialize_themes(ctx);
-
-        Ok(())
-    }
-}

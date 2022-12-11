@@ -29,14 +29,14 @@ pub struct Figtok {
 }
 
 impl Figtok {
-    pub fn create(format: &String, entry_path: &String, output_path: &String) -> Result<Figtok, Box<dyn Error>> {
+    pub fn new(format: &String, entry_path: &String, output_path: &String) -> Self {
 		let serializer: Box<dyn Serializer> = match format.as_str() {
 			"css" => Box::new(CssSerializer::new()),
 			"json" => Box::new(JsonSerializer::new()),
 			f => panic!("Unsupported output format {}", f)
 		};
 
-		let ft = Figtok {
+		let figtok = Figtok {
 			entry_path: entry_path.clone(),
 			output_path: output_path.clone(),
 			tokens: HashMap::new(),
@@ -45,9 +45,9 @@ impl Figtok {
 			serializer,
 		};
 
-		let _ = ft.prepare();
+		let _ = figtok.prepare();
 
-        Ok(ft)
+		figtok
     }
 
 	fn prepare(&self) -> Result<(), Box<dyn Error>> {
@@ -74,9 +74,9 @@ impl Figtok {
 		load(self);
     }
 
-    pub fn export(&mut self) {
-        let _ = self.serializer.serialize(self);
-    }
+    pub fn export(&self) {
+        self.serializer.serialize(self);
+	}
 
 	pub fn get_tokens(&self) -> &Tokens {
 		&self.tokens

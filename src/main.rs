@@ -20,7 +20,7 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-	let mut figtok = Figtok::create(&args.format, &args.entry, &args.output).unwrap();
+	let mut figtok = Figtok::new(&args.format, &args.entry, &args.output);
 
     figtok.load();
     figtok.export();

@@ -15,13 +15,11 @@ impl From<std::io::Error> for ReadFileError {
 }
 
 pub fn read_file(filepath: &String) -> Result<String, ReadFileError> {
-    // Check that the filepath is valid.
     let path = Path::new(filepath);
     if !path.is_file() {
         return Err(ReadFileError::InvalidFilepath);
     }
 
-    // Read the data from the file.
     let data = match fs::read_to_string(filepath) {
         Ok(data) => data,
         Err(error) => return Err(ReadFileError::from(error)),

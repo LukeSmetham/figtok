@@ -79,11 +79,11 @@ fn parse_token_set(
 
 				// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
 				// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
-				let _ = &store.token_sets.entry(slug.to_string()).and_modify(|v| {
+				store.token_sets.entry(slug.to_string()).and_modify(|v| {
 					v.push(token.id.clone());
 				});
 
-				let _ = &store.add_token(token.id.clone(), token);
+				store.add_token(token.id.clone(), token);
 			}
 			None => {
 				// If the "type" property is not present, we have a nested object
@@ -91,7 +91,7 @@ fn parse_token_set(
 					serde_json::from_value(value).unwrap();
 				let mut new_prefix = id.clone();
 
-				let _ = parse_token_set(store, slug, nested_data, Some(&mut new_prefix));
+				parse_token_set(store, slug, nested_data, Some(&mut new_prefix));
 			}
 		}
 	}
@@ -115,6 +115,6 @@ pub fn parse_themes(store: &mut Figtok, themes: Vec<serde_json::Value>) {
 			.collect();
 
 		// Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
-		let _ = &store.add_theme(theme_name, enabled_sets);
+		store.add_theme(theme_name, enabled_sets);
 	}
 }
