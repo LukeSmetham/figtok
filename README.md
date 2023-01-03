@@ -1,5 +1,5 @@
 # FigTok
-Consumes Figma Tokens JSON files, and outputs CSS.
+Consumes Figma Tokens Studio (Formerly Figma Tokens) output files, and serializes the tokens to CSS variables to be used in your projects and design systems.
 
 You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and then have `figtok` run in a GH action. Then on each update you get the updated CSS files outputted to a particular location. This would enable you to update styles in Figma, push changes from the UI, and have the updates automatically propagate to your live site/app/whatever.
 
