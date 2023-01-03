@@ -32,7 +32,7 @@ figtok --dir ./tokens --out ./build
 This package is deployed both to Cargo and NPM so that users can install the CLI easily in JS projects alongside their design tokens if they prefer. To deploy, you can use the commands in the `Makefile` - currently this uses rust-to-npm to automatically print out the boilerplate files for JS environments.
 
 Once you're ready to deploy:
-- Make sure you have Cargo Bump installed 
+- Make sure you have [Cargo Bump](https://crates.io/crates/cargo-bump) installed 
 - Run `cargo bump [patch | minor | major]`
 - Run `make build` to compile for prod, and update the necessary JS files to use the latest version.
 - Run `make deploy` to push out to Cargo and NPM simultaneously (You may need to enter 2FA for NPM.)
