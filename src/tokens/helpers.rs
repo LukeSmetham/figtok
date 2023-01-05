@@ -45,8 +45,9 @@ mod test {
 		}
 	}
 
-	// Valid CSS Calculation Statements
-	// We test for these without the calc() function syntax, as we can define calculations in token studio like this: `{token} * 2` or `{token.1} * {token.2}`
+	// CSS Calculation Statements
+	// We are essentially testing for valid arithmetic statements as strings, that also support CSS syntax like var(--whatever) and rem/em/vh/ch etc. units.
+	// We also test for these without the calc() function syntax, because we can define calculations in token studio like this: `{token} * 2` or `{token.1} * {token.2}`
 	// and then add the "calc()" wrapping ourselves before outputting the css.
 
 	#[test]
