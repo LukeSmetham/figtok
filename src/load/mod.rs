@@ -1,4 +1,6 @@
 use std::collections::HashMap;
+use std::path::Path;
+
 mod parse;
 use parse::{parse_themes, parse_token_sets};
 
@@ -15,11 +17,18 @@ enum FileMode {
     MultiFile,
 }
 
-// TODO: We should validate the the user isn't trying to give us some other format, here we will get MultiFile if the user pointed us to a CSS/JS/XML file etc.
 fn get_file_mode(path: &str) -> FileMode {
-    match path.ends_with(".json") {
-        true => FileMode::SingleFile,
-        false => FileMode::MultiFile,
+	let extension = Path::new(path).extension();
+
+    match extension {
+        Some(ext) => {
+			if ext == "json" {
+				FileMode::SingleFile
+			} else {
+				panic!("Unsupported input file extension: {:?}", ext)
+			}
+		},
+        None => FileMode::MultiFile,
     }
 }
 
@@ -66,7 +75,7 @@ pub fn load(ctx: &mut Figtok) {
                 &read_file(&format!("{}/$metadata.json", ctx.entry_path)).unwrap(),
             ) {
                 Ok(json) => json,
-                Err(error) => panic!("Error reading $metdata.json: {}", error),
+                Err(error) => panic!("Error reading $metadata.json: {}", error),
             };
 
             let themes: Vec<serde_json::Value> = match serde_json::from_str(
@@ -116,4 +125,12 @@ mod tests {
         );
         assert_eq!(get_file_mode("./tokens"), FileMode::MultiFile);
     }
+
+	#[test]
+	#[should_panic]
+	fn test_invalid_single_file_entry() {
+		let entry_path = "./tokens/variables.css";
+		
+		get_file_mode(entry_path);
+	}
 }
