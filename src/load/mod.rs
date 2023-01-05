@@ -117,6 +117,8 @@ pub fn load(ctx: &mut Figtok) {
 mod tests {
     use super::*;
 
+	// FileMode
+
     #[test]
     fn test_get_file_mode() {
         assert_eq!(
