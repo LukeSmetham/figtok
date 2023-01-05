@@ -94,10 +94,9 @@ pub fn get_token_value(ctx: &Figtok, token: &TokenDefinition, replace_method: Re
         token.value.clone()
     };
 
-    // TODO: This could be temperamental and might need improving upon.
-    // We check a regex for a css arithmetic expression and if ew have a match,
-    // then we wrap the value in calc() so CSS can do the lifting for us and
-    // we keep references alive.
+    // We check a regex for a css arithmetic expression and if we have a match,
+    // then we wrap the value in calc() so CSS can do the actual calculations for us, 
+	// and we still keep the references to token variables alive.
     if REGEX_CALC.is_match(&value) {
         value = format!("calc({})", value);
     };
