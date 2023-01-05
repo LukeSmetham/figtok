@@ -33,7 +33,7 @@ mod test {
 	}
 	
 	#[test]
-	fn no_false_positive() {
+	fn reject_invalid_handlebars_refs() {
 		let test_strings = vec![
 			"{ref.pink.0",
 			"radii.card}",
@@ -41,9 +41,60 @@ mod test {
 		];
 
 		for current in test_strings {
-			assert_eq!(REGEX_HB.is_match(current), false);
+			assert!(!REGEX_HB.is_match(current));
 		}
 	}
 
-	// CSS Calculation
+	// Valid CSS Calculation Statements
+	// We test for these without the calc() function syntax, as we can define calculations in token studio like this: `{token} * 2` or `{token.1} * {token.2}`
+	// and then add the "calc()" wrapping ourselves before outputting the css.
+
+	#[test]
+	fn captures_calc_statements() {
+		let test_strings = vec![
+			"5 + 10",
+			"10 - 5",
+			"5 * 10",
+			"10 / 5",
+			"5.5 + 10.5",
+			"10.5 - 5.5",
+			"5.5 * 10.5",
+			"10.5 / 5.5",
+			"5rem + 180deg",
+			"10px - 5em",
+			"5px * 10vw",
+			"10vh / 5px",
+			"var(--width) + 10%",
+			"10px - var(--width)",
+			"var(--width) * 10px",
+			"10px / var(--width)",
+		];
+
+		for current in test_strings {
+			assert!(REGEX_CALC.is_match(current));
+		}
+	}
+
+	#[test]
+	fn reject_invalid_calc_statements() {
+		let test_strings = vec![
+			"5.5+10.5",
+			"5-72",
+			"12/11",
+			"100*6",
+			"5 + 10 + 15",
+			"10 - 5 - 5", // multiple operations like this should probably be supported? (Check CSS Spec.)
+			"5 *",
+			"10 / 5 / 5",
+			"5.5 +",
+			"foo + 10",
+			"10 - bar",
+			"5.5 * foo",
+			"10.5 / ",
+		];
+
+		for current in test_strings {
+			assert!(!REGEX_CALC.is_match(current));
+		}
+	}
 }
