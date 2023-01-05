@@ -4,7 +4,8 @@ use std::fs;
 use convert_case::{Case, Casing};
 
 use crate::{
-    tokens::{TokenDefinition}, Figtok
+    tokens::{TokenDefinition}, 
+	Figtok
 };
 
 use super::{
@@ -103,4 +104,3 @@ impl CssSerializer {
         format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
     }
 }
-
