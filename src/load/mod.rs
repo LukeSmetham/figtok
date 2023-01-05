@@ -7,17 +7,22 @@ use utils::read_file;
 
 use crate::Figtok;
 
+#[derive(Debug)]
 enum FileMode {
 	SingleFile,
 	MultiFile
 }
 
-/// Loads all the tokens from the input directory into memory.
-pub fn load(store: &mut Figtok) {
-	let mode = match store.entry_path.ends_with(".json") {
+fn get_file_mode(path: &str) -> FileMode {
+	match path.ends_with(".json") {
 		true => FileMode::SingleFile,
 		false => FileMode::MultiFile,
-	};
+	}
+}
+
+/// Loads all the tokens from the input directory into memory.
+pub fn load(ctx: &mut Figtok) {
+	let mode = get_file_mode(&ctx.entry_path);
 
 	// Load in the raw data using serde, either from a single json file, or by traversing
 	// all json files in the directory (entry_path)
@@ -25,7 +30,7 @@ pub fn load(store: &mut Figtok) {
 	// consume the data and create Tokens, TokenSets and Themes. 
 	let (token_sets, themes) = match mode {
 		FileMode::SingleFile => {
-			let data: serde_json::Value = match serde_json::from_str(&read_file(&store.entry_path).unwrap()) {
+			let data: serde_json::Value = match serde_json::from_str(&read_file(&ctx.entry_path).unwrap()) {
 				Ok(json) => json,
 				Err(error) => panic!("Error reading $metdata.json: {}", error),
 			};
@@ -49,13 +54,13 @@ pub fn load(store: &mut Figtok) {
 		FileMode::MultiFile => {
 			// This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
 			// all of the token sets in order, matching their positions in figma tokens UI.
-			let metadata: HashMap<String, Vec<String>> = match serde_json::from_str(&read_file(&format!("{}/$metadata.json", store.entry_path)).unwrap()) {
+			let metadata: HashMap<String, Vec<String>> = match serde_json::from_str(&read_file(&format!("{}/$metadata.json", ctx.entry_path)).unwrap()) {
 				Ok(json) => json,
 				Err(error) => panic!("Error reading $metdata.json: {}", error),
 			};
 
 			let themes: Vec<serde_json::Value> =
-				match serde_json::from_str(&read_file(&format!("{}/$themes.json", store.entry_path)).unwrap()) {
+				match serde_json::from_str(&read_file(&format!("{}/$themes.json", ctx.entry_path)).unwrap()) {
 					Ok(themes) => themes,
 					Err(error) => panic!("Error loaded themes: {}", error),
 				};
@@ -83,6 +88,6 @@ pub fn load(store: &mut Figtok) {
 		},
 	};
 
-	parse_token_sets(store, token_sets);
-	parse_themes(store, themes);
+	parse_token_sets(ctx, token_sets);
+	parse_themes(ctx, themes);
 }
