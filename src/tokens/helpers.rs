@@ -84,7 +84,7 @@ mod test {
 			"12/11",
 			"100*6",
 			"5 + 10 + 15",
-			"10 - 5 - 5", // multiple operations like this should probably be supported? (Check CSS Spec.)
+			"10 - 5 - 5", // multiple operations like this should probably be supported? (Check CSS Spec.) https://css-tricks.com/a-complete-guide-to-calc-in-css/
 			"5 *",
 			"10 / 5 / 5",
 			"5.5 +",
