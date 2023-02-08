@@ -42,6 +42,9 @@ fn parse_token_set(
 
 				// do any transformations to the token data based on its kind
 				token = match token.kind {
+					TokenKind::BorderRadius => token,
+					TokenKind::BorderWidth => token,
+					TokenKind::BoxShadow => token,
 					TokenKind::Color => {
 						// if the token doesn't contain a reference to
 						// another token, then convert it to rgb.
@@ -55,9 +58,9 @@ fn parse_token_set(
 							);
 						}
 						token
-					}
-					TokenKind::BorderRadius => token,
-					TokenKind::BorderWidth => token,
+					},
+					TokenKind::Composition => token,
+					TokenKind::Dimension => token,
 					TokenKind::FontFamily => token,
 					TokenKind::FontWeights => token,
 					TokenKind::FontSize => token,
@@ -66,6 +69,7 @@ fn parse_token_set(
 					TokenKind::Opacity => token,
 					TokenKind::Sizing => token,
 					TokenKind::Spacing => token,
+					TokenKind::Typography => token,
 					TokenKind::Other => token,
 				};
 

@@ -10,8 +10,14 @@ pub enum TokenKind {
     BorderRadius,
 	#[serde(alias = "borderWidth")]
 	BorderWidth,
+	#[serde(alias = "boxShadow")]
+	BoxShadow,
     #[serde(alias = "color")]
     Color,
+    #[serde(alias = "composition")]
+    Composition,
+    #[serde(alias = "dimension")]
+    Dimension,
     #[serde(alias = "fontFamilies")]
     FontFamily,
 	#[serde(alias = "fontSizes")]
@@ -28,6 +34,8 @@ pub enum TokenKind {
 	Sizing,
     #[serde(alias = "spacing")]
     Spacing,
+	#[serde(alias = "typography")]
+	Typography,
     #[serde(alias = "other")]
     Other,
 }
