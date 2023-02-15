@@ -54,8 +54,76 @@ pub struct TokenDefinition {
 	pub id: String,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CompositionTokenDefinition {
+	/// Stores string references to the tokens used in this composition token.
+	pub tokens: Vec<String>,
+	/// The name field is constructed as the dot-notated selector for the value in the original JSON file. e.g. "color.purple.1"
+	#[serde(default)]
+	pub name: String,
+	#[serde(default)]
+	pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct TypographyValue {
+	#[serde(alias="fontFamily")]
+	font_family: Option<String>,
+	#[serde(alias="fontWeight")]
+	font_weight: Option<String>,
+	#[serde(alias="lineHeight")]
+	line_height: Option<String>,
+	#[serde(alias="fontSize")]
+	font_size: Option<String>,
+	#[serde(alias="letterSpacing")]
+	letter_spacing: Option<String>,
+}
+impl IntoIterator for TypographyValue {
+	type Item = String;
+	type IntoIter = TypographyValueIter;
+
+	fn into_iter(self) -> Self::IntoIter {
+		TypographyValueIter {
+			value: self,
+			index: 0
+		}
+	}
+}
+
+pub struct TypographyValueIter {
+	value: TypographyValue,
+	index: usize
+}
+impl Iterator for TypographyValueIter {
+	type Item = String;
+
+	fn next(&mut self) -> Option<String> {
+		let result = match self.index {
+			0 => self.value.font_size.clone(),
+			1 => self.value.line_height.clone(),
+			2 => self.value.font_family.clone(),
+			_ => None
+		};
+
+		self.index += 1;
+		result
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct BoxShadowTokenLayer {
+	color: String, 
+	#[serde(alias="type")]
+	kind: String,
+	x: String, 
+	y: String,
+	blur: String, 
+	spread: String,
+}
+
 pub type TokenSet = Vec<String>;
 pub type TokenSets = HashMap<String, TokenSet>;
 pub type Tokens = HashMap<String, TokenDefinition>;
+pub type CompositionTokens = HashMap<String, CompositionTokenDefinition>;
 pub type Theme = HashMap<String, String>;
 pub type Themes = HashMap<String, Theme>;
