@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use serde_derive::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
     BorderRadius,
@@ -56,6 +56,20 @@ pub struct TokenDefinition {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CompositionTokenDefinition {
+	/// Stores string references to the tokens used in this composition token.
+	pub value: serde_json::Value,
+	/// Tells us what kind of token this is. Aliased from "type" field in the original json.
+    #[serde(alias = "type")]
+    pub kind: TokenKind,
+	/// The name field is constructed as the dot-notated selector for the value in the original JSON file. e.g. "color.purple.1"
+	#[serde(default)]
+	pub name: String,
+	#[serde(default)]
+	pub id: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CompositionToken {
 	/// Stores string references to the tokens used in this composition token.
 	pub tokens: Vec<String>,
 	/// The name field is constructed as the dot-notated selector for the value in the original JSON file. e.g. "color.purple.1"
@@ -124,6 +138,6 @@ pub struct BoxShadowTokenLayer {
 pub type TokenSet = Vec<String>;
 pub type TokenSets = HashMap<String, TokenSet>;
 pub type Tokens = HashMap<String, TokenDefinition>;
-pub type CompositionTokens = HashMap<String, CompositionTokenDefinition>;
+pub type CompositionTokens = HashMap<String, CompositionToken>;
 pub type Theme = HashMap<String, String>;
 pub type Themes = HashMap<String, Theme>;

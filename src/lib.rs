@@ -5,7 +5,7 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-use tokens::{TokenDefinition, Tokens, TokenSet, TokenSets, Themes, Theme, CompositionTokens, CompositionTokenDefinition};
+use tokens::{TokenDefinition, Tokens, TokenSet, TokenSets, Themes, Theme, CompositionTokens, CompositionToken};
 
 pub mod load;
 use load::load;
@@ -104,7 +104,7 @@ impl Figtok {
 		self.token_sets.insert(key, value);
 	}
 
-	pub fn add_composition_token(&mut self, key: String, value: CompositionTokenDefinition) {
+	pub fn add_composition_token(&mut self, key: String, value: CompositionToken) {
 		self.composition_tokens.insert(key, value);
 	}
 
