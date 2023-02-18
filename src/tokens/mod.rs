@@ -112,13 +112,6 @@ impl TokenDefinition<String> {
 			}
 		}
 
-        // We check a regex for a css arithmetic expression and if we have a match,
-        // then we wrap the value in calc() so CSS can do the actual calculations for us,
-        // and we still keep the references to token variables alive.
-        if REGEX_CALC.is_match(&value) {
-            value = format!("calc({})", value);
-        };
-
         value
     }
 }
@@ -135,24 +128,24 @@ impl TokenDefinition<Vec<ShadowLayer>> {
             match layer.kind {
                 ShadowLayerKind::DropShadow => value.push(format!(
                     "{}px {}px {}px {}px {}",
-                    deref_token_value(layer.x.to_string(), ctx, replace_method), 
-					deref_token_value(layer.y.to_string(), ctx, replace_method), 
-					deref_token_value(layer.blur.to_string(), ctx, replace_method), 
-					deref_token_value(layer.spread.to_string(), ctx, replace_method), 
-					deref_token_value(layer.color.to_string(), ctx, replace_method)
+                    layer.x, 
+					layer.y, 
+					layer.blur,
+					layer.spread,
+					layer.color,
                 )),
                 ShadowLayerKind::InnerShadow => value.push(format!(
                     "inset {}px {}px {}px {}px {}",
-                    deref_token_value(layer.x.to_string(), ctx, replace_method), 
-					deref_token_value(layer.y.to_string(), ctx, replace_method), 
-					deref_token_value(layer.blur.to_string(), ctx, replace_method), 
-					deref_token_value(layer.spread.to_string(), ctx, replace_method), 
-					deref_token_value(layer.color.to_string(), ctx, replace_method)
+                    layer.x, 
+					layer.y, 
+					layer.blur,
+					layer.spread,
+					layer.color,
                 )),
             };
         }
 
-        value.join(", ")
+        deref_token_value(value.join(", "), ctx, replace_method)
     }
 }
 
@@ -251,11 +244,20 @@ impl Token {
     }
 
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-        match self {
+        let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Composition(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method, nested),
-        }
+        };
+
+		// We check a regex for a css arithmetic expression and if we have a match,
+        // then we wrap the value in calc() so CSS can do the actual calculations for us,
+        // and we still keep the references to token variables alive.
+        if REGEX_CALC.is_match(&value) {
+            value = format!("calc({})", value);
+        };
+
+        value
     }
 
     pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
