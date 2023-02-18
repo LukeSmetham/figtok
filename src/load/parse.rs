@@ -1,10 +1,9 @@
 use std::collections::{HashMap};
 use colors_transform::{Color, Rgb};
-use serde::Deserialize;
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
-use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowLayer, TypographyValue, ShadowValue};
+use crate::tokens::{TokenDefinition, TokenKind, Token, TypographyValue, ShadowValue};
 
 pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
 	// Iterate over all of the theme definitions
@@ -153,7 +152,7 @@ fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::V
 
 fn create_typography_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<TypographyValue> {
 	let mut token: TokenDefinition<TypographyValue> = serde_json::from_value(value).unwrap();
-
+	
 	token.name = id.join(".");
 
 	let id_parts = vec![

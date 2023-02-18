@@ -2,7 +2,7 @@ use std::default::Default;
 use std::fs;
 
 use crate::{
-	Figtok, tokens::ReplaceMethod
+	Figtok, tokens::{ReplaceMethod, Token, TokenSet, deref_token_value}
 };
 
 use super::{
@@ -40,17 +40,37 @@ impl CssSerializer {
         for (set_name, token_set) in ctx.get_token_sets() {
 			// init the string that will hold our css file
             let mut value = String::new();
+			let mut classes = String::new(); 
 
 			// add the opening line
             value.push_str(":root{");
 
-            for id in token_set { // serialize each token to a CSS String and add it to value
-                let token = &ctx.get_tokens()[id];
-                value.push_str(&token.to_css(ctx, ReplaceMethod::CssVariables));
+            for id in token_set { 
+				// serialize standard & shadow tokens to a CSS String and add it to value
+				let token = &ctx.get_tokens()[id];
+				let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
+
+				match token {
+					Token::Standard(_) => {
+						value.push_str(token_value);
+					}
+					Token::Shadow(_) => {
+						value.push_str(token_value);
+					}
+					Token::Typography(_) => {
+						classes.push_str(token_value);
+					},
+					Token::Composition(_) => {
+						classes.push_str(token_value);
+					}
+				}
             }
 
 			// add the final curly bracket
             value.push_str("}");
+
+			// Add the classes to the end of the value str.
+			value.push_str(classes.as_str());
 
 			// Now we make sure the output directory exists, and write the CSS file to disk
 
@@ -76,11 +96,9 @@ impl CssSerializer {
 
             let mut value = String::new();
 
-            for set in set_names {
-                value.push_str(format!("@import \"./{}.css\";", set).as_str());
+            for name in set_names {
+                value.push_str(format!("@import \"./{}.css\";", &name).as_str());
             }
-
-			// TODO: We may want to eventually handle some theme-specific css here too like classes, namespaced styles etc.
 
             // Themes must be output to the top level so that the import paths work
             // we can probably work around this, if we want, as things improve.
