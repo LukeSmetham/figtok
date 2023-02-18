@@ -1,11 +1,8 @@
 use std::default::Default;
 use std::fs;
 
-use convert_case::{Case, Casing};
-
 use crate::{
-    tokens::{TokenDefinition}, 
-	Figtok
+	Figtok, tokens::ReplaceMethod
 };
 
 use super::{
@@ -49,7 +46,7 @@ impl CssSerializer {
 
             for id in token_set { // serialize each token to a CSS String and add it to value
                 let token = &ctx.get_tokens()[id];
-                value.push_str(&token.to_css(ctx));
+                value.push_str(&token.to_css(ctx, ReplaceMethod::CssVariables));
             }
 
 			// add the final curly bracket

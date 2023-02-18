@@ -1,24 +1,24 @@
 pub mod helpers;
 
-use std::collections::HashMap;
-use convert_case::{Case, Casing};
-use serde_derive::{Deserialize, Serialize};
 use crate::Figtok;
+use convert_case::{Case, Casing};
 use regex::Captures;
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use self::helpers::{REGEX_HB, REGEX_CALC};
+use self::helpers::{REGEX_CALC, REGEX_HB};
 
 #[derive(Clone, Copy)]
 pub enum ReplaceMethod {
-	CssVariables,
-	StaticValues,
+    CssVariables,
+    StaticValues,
 }
 
-fn to_variable_name(name: &String) -> String {
-	format!("var(--{})", name.replace(".", "-"))
+fn to_variable_name(name: String) -> String {
+    format!("var(--{})", name.replace(".", "-"))
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
     BorderRadius,
@@ -54,6 +54,34 @@ pub enum TokenKind {
     Other,
 }
 
+fn deref_token_value(input: String, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+    REGEX_HB
+        .replace_all(&input, |caps: &Captures| {
+            // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
+            let ref_name = &caps[1];
+
+            // Find the referenced token
+            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
+                
+				// Get the value of the referenced token.
+				let replacement = match replace_method {
+
+                    ReplaceMethod::CssVariables => to_variable_name(t.name()),
+                    ReplaceMethod::StaticValues => {
+                        // when returning a static value, we recursively call get_token_value to ensure we have
+                        // unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
+                        t.value(ctx, replace_method, true)
+                    }
+                };
+
+                REGEX_HB.replace(&caps[0], replacement).to_string()
+            } else {
+				input.clone()
+            }
+        })
+        .to_string()
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct TokenDefinition<T> {
     /// The value from the original json file for this token. May be a static value, or a reference using handlebars syntax e.g. {color.purple.1}
@@ -71,86 +99,18 @@ impl TokenDefinition<String> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         // Check if the original_value contains handlebar syntax with a reference to another token.
         let mut value = if REGEX_HB.is_match(&self.value) {
-            REGEX_HB
-                .replace_all(&self.value, |caps: &Captures| {
-                    // this will run for each occurrence per string. (i.e. multiple tokens multiplied together)
-                    // Get the ref string without the surrounding curly brackets and use it to retrieve the referenced token
-                    let ref_name = &caps[1];
-
-                    // Find the token using the ref_name.
-                    match ctx.tokens.values().find(|t| {
-						let name = match t {
-							Token::Standard(t) => t.name.clone(),
-							Token::Composition(t) => t.name.clone(),
-						};
-
-						name == ref_name
-					}) {
-                        Some(t) => {
-
-							let token_name = match t {
-								Token::Standard(t) => t.name.clone(),
-								Token::Composition(t) => t.name.clone(),
-							};
-
-                            // If we find a token
-                            // Replace the handlebar ref with a css variable that points to the relevant variable for the referenced self.
-
-                            let replacement = match replace_method {
-                                ReplaceMethod::CssVariables => to_variable_name(&token_name),
-                                ReplaceMethod::StaticValues => {
-                                    // when returning a static value, we recursively call get_token_value to ensure we have
-                                    // unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
-                                    self.get_value(ctx, replace_method, true)
-                                }
-                            };
-
-                            let mut value_str = REGEX_HB.replace(&caps[0], replacement).to_string();
-
-                            if !nested {
-                                // If we are not nested in this iteration, check the self.kind value and apply any
-                                // final transformations. e.g. We convert all colors to rgb/rgba when parsing, so any
-                                // color token that doesn't already start with RGB should be wrapped with `rgb()`
-                                value_str = match &self.kind {
-                                    TokenKind::Color => {
-                                        if !self.value.starts_with("rgb") {
-                                            value_str = format!("rgb({})", value_str);
-                                        }
-                                        value_str
-                                    }
-                                    _ => value_str,
-                                }
-                            }
-
-                            value_str
-                        }
-                        None => {
-                            let replacement = match replace_method {
-                                ReplaceMethod::CssVariables => {
-                                    to_variable_name(&String::from(ref_name))
-                                }
-                                ReplaceMethod::StaticValues => String::from("ERR_NOT_FOUND"),
-                            };
-
-                            let mut value_str = REGEX_HB
-                                .replace_all(&self.value.to_string(), replacement)
-                                .to_string();
-
-                            if !nested
-                                && !self.value.starts_with("rgb")
-                                && self.kind == TokenKind::Color
-                            {
-                                value_str = format!("rgb({})", value_str);
-                            }
-                            value_str
-                        }
-                    }
-                })
-                .to_string()
+			// if so, follow the reference:
+			deref_token_value(self.value.to_string(), ctx, replace_method)
         } else {
-            // If there is no handlebar reference in the string, just return the value as is.
+            // If there is no handlebar reference in the value, just return the value as is.
             self.value.clone()
         };
+
+		if !nested && self.kind == TokenKind::Color {
+			if !self.value.starts_with("rgb") {
+				value = format!("rgb({})", value);
+			}
+		}
 
         // We check a regex for a css arithmetic expression and if we have a match,
         // then we wrap the value in calc() so CSS can do the actual calculations for us,
@@ -163,9 +123,37 @@ impl TokenDefinition<String> {
     }
 }
 impl TokenDefinition<serde_json::Value> {
-	pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-		String::from("unimpl.")
-	}
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+        String::from("composition value")
+    }
+}
+impl TokenDefinition<Vec<ShadowLayer>> {
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+        let mut value: Vec<String> = vec![];
+
+        for layer in &self.value {
+            match layer.kind {
+                ShadowLayerKind::DropShadow => value.push(format!(
+                    "{}px {}px {}px {}px {}",
+                    deref_token_value(layer.x.to_string(), ctx, replace_method), 
+					deref_token_value(layer.y.to_string(), ctx, replace_method), 
+					deref_token_value(layer.blur.to_string(), ctx, replace_method), 
+					deref_token_value(layer.spread.to_string(), ctx, replace_method), 
+					deref_token_value(layer.color.to_string(), ctx, replace_method)
+                )),
+                ShadowLayerKind::InnerShadow => value.push(format!(
+                    "inset {}px {}px {}px {}px {}",
+                    deref_token_value(layer.x.to_string(), ctx, replace_method), 
+					deref_token_value(layer.y.to_string(), ctx, replace_method), 
+					deref_token_value(layer.blur.to_string(), ctx, replace_method), 
+					deref_token_value(layer.spread.to_string(), ctx, replace_method), 
+					deref_token_value(layer.color.to_string(), ctx, replace_method)
+                )),
+            };
+        }
+
+        value.join(", ")
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -214,10 +202,17 @@ impl Iterator for TypographyValueIter {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum ShadowLayerKind {
+    #[serde(alias = "innerShadow")]
+    InnerShadow,
+    #[serde(alias = "dropShadow")]
+    DropShadow,
+}
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ShadowLayer {
     color: String,
     #[serde(alias = "type")]
-    kind: String,
+    kind: ShadowLayerKind,
     x: String,
     y: String,
     blur: String,
@@ -225,26 +220,51 @@ pub struct ShadowLayer {
 }
 
 pub enum Token {
-	Standard(TokenDefinition<String>),
-	Composition(TokenDefinition<serde_json::Value>),
-	// Typography(TokenDefinition<TypographyValue>),
-	// Shadow(TokenDefinition<Vec<ShadowLayer>>),
+    Standard(TokenDefinition<String>),
+    Composition(TokenDefinition<serde_json::Value>),
+    // Typography(TokenDefinition<TypographyValue>),
+    Shadow(TokenDefinition<Vec<ShadowLayer>>),
 }
 impl Token {
-	pub fn to_css(&self, ctx: &Figtok) -> String {
+    pub fn name(&self) -> String {
+        match self {
+            Token::Standard(t) => t.name.clone(),
+            Token::Composition(t) => t.name.clone(),
+            Token::Shadow(t) => t.name.clone(),
+        }
+    }
 
-		let name: String = match self {
-			Token::Standard(t) => t.name.clone(),
-			Token::Composition(t) => t.name.clone(),
-		};
-		
-		let value: String = match self {
-			Token::Standard(t) => t.get_value(ctx, ReplaceMethod::CssVariables, false),
-			Token::Composition(t) => t.get_value(ctx, ReplaceMethod::CssVariables, false),
-		};
+    pub fn id(&self) -> String {
+        match self {
+            Token::Standard(t) => t.id.clone(),
+            Token::Composition(t) => t.id.clone(),
+            Token::Shadow(t) => t.id.clone(),
+        }
+    }
 
-        format!("--{}: {};", name.replace(".", "-").to_case(Case::Kebab), value)
-	}
+    pub fn kind(&self) -> TokenKind {
+        match self {
+            Token::Standard(t) => t.kind,
+            Token::Composition(t) => t.kind,
+            Token::Shadow(t) => t.kind,
+        }
+    }
+
+    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+        match self {
+            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
+            Token::Composition(t) => t.get_value(ctx, replace_method, nested),
+            Token::Shadow(t) => t.get_value(ctx, replace_method, nested),
+        }
+    }
+
+    pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+        format!(
+            "--{}: {};",
+            self.name().replace(".", "-").to_case(Case::Kebab),
+            self.value(ctx, replace_method, false)
+        )
+    }
 }
 
 pub type TokenSet = Vec<String>;
