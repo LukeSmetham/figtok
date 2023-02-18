@@ -1,6 +1,10 @@
 use once_cell::sync::Lazy;
 
-use regex::{Regex};
+use regex::{Regex, Captures};
+use convert_case::{Case, Casing};
+
+use crate::Figtok;
+use super::{ReplaceMethod};
 
 /// Stores a Regex to find handlebars syntax ( i.e. {variable.property} )
 pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
@@ -11,6 +15,31 @@ pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
 pub static REGEX_CALC: Lazy<Regex> = Lazy::new(|| {
 	Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)( )?$").unwrap()
 });
+
+pub fn css_stringify(s: &String) -> String {
+	s.replace(".", "-").to_case(Case::Kebab)
+}
+
+pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: super::ReplaceMethod) -> String {
+    REGEX_HB
+        .replace_all(&input, |caps: &Captures| {
+            // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
+            let ref_name = &caps[1];
+
+            // Find the referenced token
+            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
+				// Get the value of the referenced token.
+				let replacement = match replace_method {
+                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
+                    ReplaceMethod::StaticValues => t.value(ctx, replace_method, true)
+                };
+                REGEX_HB.replace(&caps[0], replacement).to_string()
+            } else {
+				input.clone()
+            }
+        })
+        .to_string()
+}
 
 #[cfg(test)]
 mod test {

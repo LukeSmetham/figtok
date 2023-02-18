@@ -48,13 +48,7 @@ impl CssSerializer {
                 let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
 
                 match token {
-                    Token::Standard(_) => {
-                        value.push_str(token_value);
-                    }
-                    Token::Color(_) => {
-                        value.push_str(token_value);
-                    }
-                    Token::Shadow(_) => {
+                    Token::Standard(_) | Token::Shadow(_) => {
                         value.push_str(token_value);
                     }
                     Token::Composition(_) => {
@@ -69,7 +63,7 @@ impl CssSerializer {
             // Add the classes to the end of the value str.
             value.push_str(classes.as_str());
 
-            // Now we make sure the output directory exists, and write the CSS file to disk
+			// Write to the output dir 
 
             // Split the set name by any /'s in case they are nested but remove the
             // last portion as this will be the file name not a directory
@@ -77,7 +71,6 @@ impl CssSerializer {
                 Some((d, _)) => d,
                 None => "",
             };
-
             // Ensure the directories we need exist
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
             // Write the css file.

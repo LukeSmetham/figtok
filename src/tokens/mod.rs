@@ -1,13 +1,13 @@
 pub mod helpers;
 
 use crate::Figtok;
+use colors_transform::{Color, Rgb};
 use convert_case::{Case, Casing};
-use regex::Captures;
 use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 
-use self::helpers::{REGEX_CALC, REGEX_HB};
+use self::helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
 
 #[derive(Clone, Copy)]
 pub enum ReplaceMethod {
@@ -17,33 +17,7 @@ pub enum ReplaceMethod {
     StaticValues,
 }
 
-fn css_stringify(s: &String) -> String {
-	s.replace(".", "-").to_case(Case::Kebab)
-}
-
-pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
-    REGEX_HB
-        .replace_all(&input, |caps: &Captures| {
-            // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
-            let ref_name = &caps[1];
-
-            // Find the referenced token
-            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
-				// Get the value of the referenced token.
-				let replacement = match replace_method {
-                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
-                    ReplaceMethod::StaticValues => t.value(ctx, replace_method, true)
-                };
-                REGEX_HB.replace(&caps[0], replacement).to_string()
-            } else {
-				input.clone()
-            }
-        })
-        .to_string()
-}
-
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
     BorderRadius,
@@ -107,7 +81,6 @@ pub struct ShadowValue(pub Vec<ShadowLayer>);
 
 pub enum Token {
     Standard(TokenDefinition<String>),
-	Color(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
     Shadow(TokenDefinition<ShadowValue>),
 }
@@ -115,7 +88,6 @@ impl Token {
     pub fn name(&self) -> String {
         match self {
             Token::Standard(t) => t.name.clone(),
-            Token::Color(t) => t.name.clone(),
             Token::Composition(t) => t.name.clone(),
             Token::Shadow(t) => t.name.clone(),
         }
@@ -124,7 +96,6 @@ impl Token {
     pub fn id(&self) -> String {
         match self {
             Token::Standard(t) => t.id.clone(),
-            Token::Color(t) => t.id.clone(),
             Token::Composition(t) => t.id.clone(),
             Token::Shadow(t) => t.id.clone(),
         }
@@ -133,7 +104,6 @@ impl Token {
     pub fn kind(&self) -> TokenKind {
         match self {
             Token::Standard(t) => t.kind,
-            Token::Color(t) => t.kind,
             Token::Composition(t) => t.kind,
             Token::Shadow(t) => t.kind,
         }
@@ -141,7 +111,7 @@ impl Token {
 
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         let mut value = match self {
-            Token::Standard(t) | Token::Color(t) => t.get_value(ctx, replace_method, nested),
+            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
             Token::Composition(t) => t.get_value(ctx, replace_method),
         };
@@ -158,7 +128,7 @@ impl Token {
 
     pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
 		match self {
-			Token::Standard(_) | Token::Shadow(_) | Token::Color(_) => {
+			Token::Standard(_) | Token::Shadow(_) => {
 				format!(
 					"--{}: {};",
 					css_stringify(&self.name()),
@@ -201,13 +171,25 @@ impl TokenDefinition<String> {
 			
 			v
         } else {
-            // If there is no handlebar reference in the value, just return the value as is.
-            self.value.clone()
+			// If no reference and we have a color value, convert it to rgb
+			if TokenKind::Color == self.kind {
+					let rgb = Rgb::from_hex_str(&self.value).unwrap();
+					format!(
+						"{}, {}, {}",
+						rgb.get_red(),
+						rgb.get_green(),
+						rgb.get_blue()
+					)
+			}else {
+				// If there is no handlebar reference in the value, just return the value as is.
+				self.value.clone()
+			}
         };
 
         value
     }
 }
+
 impl TokenDefinition<serde_json::Value> {
 	/// For composition tokens, it constructs a css class containing all of the inner values so they can be applied at once.
 	/// Figtok also treats Typography tokens as composition tokens after the parse step.

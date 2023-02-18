@@ -1,9 +1,7 @@
 use std::collections::{HashMap};
-use colors_transform::{Color, Rgb};
 use serde::de::DeserializeOwned;
 
 use crate::Figtok;
-use crate::tokens::helpers::REGEX_HB;
 use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowValue};
 
 pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
@@ -109,16 +107,3 @@ where
 
 	token
 }
-// if token.kind == TokenKind::Color {
-// 	// if the token doesn't contain a reference to
-// 	// another token, then convert it to rgb.
-// 	if !REGEX_HB.is_match(&token.value) {
-// 		let rgb = Rgb::from_hex_str(&token.value).unwrap();
-// 		token.value = format!(
-// 			"{}, {}, {}",
-// 			rgb.get_red(),
-// 			rgb.get_green(),
-// 			rgb.get_blue()
-// 		);
-// 	}
-// }

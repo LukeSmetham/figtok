@@ -18,19 +18,21 @@ enum FileMode {
     MultiFile,
 }
 
-fn get_file_mode(path: &str) -> FileMode {
-    let extension = Path::new(path).extension();
+/// Loads all the tokens from the input directory into memory.
+pub fn load(ctx: &mut Figtok) {
+    let mode = get_file_mode(&ctx.entry_path);
 
-    match extension {
-        Some(ext) => {
-            if ext == "json" {
-                FileMode::SingleFile
-            } else {
-                panic!("Unsupported input file extension: {:?}", ext)
-            }
-        }
-        None => FileMode::MultiFile,
-    }
+    // Load in the raw data using serde, either from a single json file, or by traversing
+    // all json files in the directory (entry_path)
+    // We can then pass these values to parse_token_sets and parse_themes respectively to
+    // consume the data and create Tokens, TokenSets and Themes.
+    let (token_sets, themes) = match mode {
+        FileMode::SingleFile => load_from_file(&ctx.entry_path),
+        FileMode::MultiFile => load_from_dir(&ctx.entry_path),
+    };
+
+    parse_token_sets(ctx, token_sets);
+    parse_themes(ctx, themes);
 }
 
 fn load_from_file(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>) {
@@ -96,21 +98,19 @@ fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, 
     (token_sets, themes)
 }
 
-/// Loads all the tokens from the input directory into memory.
-pub fn load(ctx: &mut Figtok) {
-    let mode = get_file_mode(&ctx.entry_path);
+fn get_file_mode(path: &str) -> FileMode {
+    let extension = Path::new(path).extension();
 
-    // Load in the raw data using serde, either from a single json file, or by traversing
-    // all json files in the directory (entry_path)
-    // We can then pass these values to parse_token_sets and parse_themes respectively to
-    // consume the data and create Tokens, TokenSets and Themes.
-    let (token_sets, themes) = match mode {
-        FileMode::SingleFile => load_from_file(&ctx.entry_path),
-        FileMode::MultiFile => load_from_dir(&ctx.entry_path),
-    };
-
-    parse_token_sets(ctx, token_sets);
-    parse_themes(ctx, themes);
+    match extension {
+        Some(ext) => {
+            if ext == "json" {
+                FileMode::SingleFile
+            } else {
+                panic!("Unsupported input file extension: {:?}", ext)
+            }
+        }
+        None => FileMode::MultiFile,
+    }
 }
 
 #[cfg(test)]
