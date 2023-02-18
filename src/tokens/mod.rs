@@ -4,19 +4,44 @@ use crate::Figtok;
 use convert_case::{Case, Casing};
 use regex::Captures;
 use serde_derive::{Deserialize, Serialize};
+use serde::de::DeserializeOwned;
 use std::collections::HashMap;
 
 use self::helpers::{REGEX_CALC, REGEX_HB};
 
 #[derive(Clone, Copy)]
 pub enum ReplaceMethod {
+	/// Convert the token into a css var() statement, pointing to a css variable somewhere else in the system.
     CssVariables,
+	/// Get the inner token value, this technically recurses until it finds the deepest static value. (i.e. not a handlebar reference to another token)
     StaticValues,
 }
 
-fn to_variable_name(name: String) -> String {
-    format!("var(--{})", name.replace(".", "-"))
+fn css_stringify(s: &String) -> String {
+	s.replace(".", "-").to_case(Case::Kebab)
 }
+
+pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+    REGEX_HB
+        .replace_all(&input, |caps: &Captures| {
+            // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
+            let ref_name = &caps[1];
+
+            // Find the referenced token
+            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
+				// Get the value of the referenced token.
+				let replacement = match replace_method {
+                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
+                    ReplaceMethod::StaticValues => t.value(ctx, replace_method, true)
+                };
+                REGEX_HB.replace(&caps[0], replacement).to_string()
+            } else {
+				input.clone()
+            }
+        })
+        .to_string()
+}
+
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy, Eq, Hash)]
 pub enum TokenKind {
@@ -77,35 +102,98 @@ impl ToString for TokenKind {
     }
 }
 
-pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
-    REGEX_HB
-        .replace_all(&input, |caps: &Captures| {
-            // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
-            let ref_name = &caps[1];
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ShadowValue(pub Vec<ShadowLayer>);
 
-            // Find the referenced token
-            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
-                
-				// Get the value of the referenced token.
-				let replacement = match replace_method {
+pub enum Token {
+    Standard(TokenDefinition<String>),
+	Color(TokenDefinition<String>),
+    Composition(TokenDefinition<serde_json::Value>),
+    Shadow(TokenDefinition<ShadowValue>),
+}
+impl Token {
+    pub fn name(&self) -> String {
+        match self {
+            Token::Standard(t) => t.name.clone(),
+            Token::Color(t) => t.name.clone(),
+            Token::Composition(t) => t.name.clone(),
+            Token::Shadow(t) => t.name.clone(),
+        }
+    }
 
-                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
-                    ReplaceMethod::StaticValues => {
-                        // when returning a static value, we recursively call get_token_value to ensure we have
-                        // unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
-                        t.value(ctx, replace_method, true)
-                    }
-                };
+    pub fn id(&self) -> String {
+        match self {
+            Token::Standard(t) => t.id.clone(),
+            Token::Color(t) => t.id.clone(),
+            Token::Composition(t) => t.id.clone(),
+            Token::Shadow(t) => t.id.clone(),
+        }
+    }
 
-                REGEX_HB.replace(&caps[0], replacement).to_string()
-            } else {
-				input.clone()
-            }
-        })
-        .to_string()
+    pub fn kind(&self) -> TokenKind {
+        match self {
+            Token::Standard(t) => t.kind,
+            Token::Color(t) => t.kind,
+            Token::Composition(t) => t.kind,
+            Token::Shadow(t) => t.kind,
+        }
+    }
+
+    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+        let mut value = match self {
+            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
+            Token::Color(t) => t.get_value(ctx, replace_method, nested),
+            Token::Composition(t) => t.get_value(ctx, replace_method, nested),
+            Token::Shadow(t) => t.get_value(ctx, replace_method),
+        };
+
+		// We check a regex for a css arithmetic expression and if we have a match,
+        // then we wrap the value in calc() so CSS can do the actual calculations for us,
+        // and we still keep the references to token variables alive.
+        if REGEX_CALC.is_match(&value) {
+            value = format!("calc({})", value);
+        };
+
+        value
+    }
+
+    pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+		match self {
+			Token::Standard(_) | Token::Shadow(_) | Token::Color(_) => {
+				format!(
+					"--{}: {};",
+					css_stringify(&self.name()),
+					self.value(ctx, replace_method, false)
+				)
+			}
+			Token::Composition(t) => {
+				let mut class = String::new();
+
+				class.push_str(format!(".{} {{", css_stringify(&self.name())).as_str());
+
+				for (key, value) in t.value.as_object().unwrap() {
+					// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
+					//so don't already exist on ctx - but may still contain references to tokens.
+					let token_value = deref_token_value(value.as_str().unwrap().to_string(), ctx, replace_method);
+					class.push_str(
+					format!(
+							"{}: {};", 
+							key.replace(".", "-").to_case(Case::Kebab),
+							token_value
+						).as_str()
+					);
+				};
+
+				class.push_str("}");
+
+				class
+			}
+		}
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+#[serde(bound(deserialize = "T: DeserializeOwned"))]
 pub struct TokenDefinition<T> {
     /// The value from the original json file for this token. May be a static value, or a reference using handlebars syntax e.g. {color.purple.1}
     pub value: T,
@@ -143,7 +231,6 @@ impl TokenDefinition<String> {
 }
 impl TokenDefinition<serde_json::Value> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-		println!("{:?}", self.value);
         String::from("composition value")
     }
 }
@@ -215,104 +302,6 @@ impl std::fmt::Display for ShadowLayer {
 			self.spread
 		)
 	}
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ShadowValue(pub Vec<ShadowLayer>);
-
-impl std::fmt::Display for ShadowValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let shadow_layers = self
-			.0
-            .iter()
-            .map(|shadow_layer| shadow_layer.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-        write!(f, "[{}]", shadow_layers)
-    }
-}
-
-fn css_stringify(s: &String) -> String {
-	s.replace(".", "-").to_case(Case::Kebab)
-}
-
-pub enum Token {
-    Standard(TokenDefinition<String>),
-    Composition(TokenDefinition<serde_json::Value>),
-    Shadow(TokenDefinition<ShadowValue>),
-}
-impl Token {
-    pub fn name(&self) -> String {
-        match self {
-            Token::Standard(t) => t.name.clone(),
-            Token::Composition(t) => t.name.clone(),
-            Token::Shadow(t) => t.name.clone(),
-        }
-    }
-
-    pub fn id(&self) -> String {
-        match self {
-            Token::Standard(t) => t.id.clone(),
-            Token::Composition(t) => t.id.clone(),
-            Token::Shadow(t) => t.id.clone(),
-        }
-    }
-
-    pub fn kind(&self) -> TokenKind {
-        match self {
-            Token::Standard(t) => t.kind,
-            Token::Composition(t) => t.kind,
-            Token::Shadow(t) => t.kind,
-        }
-    }
-
-    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-        let mut value = match self {
-            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
-            Token::Composition(t) => t.get_value(ctx, replace_method, nested),
-            Token::Shadow(t) => t.get_value(ctx, replace_method),
-        };
-
-		// We check a regex for a css arithmetic expression and if we have a match,
-        // then we wrap the value in calc() so CSS can do the actual calculations for us,
-        // and we still keep the references to token variables alive.
-        if REGEX_CALC.is_match(&value) {
-            value = format!("calc({})", value);
-        };
-
-        value
-    }
-
-    pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
-		match self {
-			Token::Standard(_) | Token::Shadow(_) => {
-				format!(
-					"--{}: {};",
-					css_stringify(&self.name()),
-					self.value(ctx, replace_method, false)
-				)
-			}
-			Token::Composition(t) => {
-				let mut class = String::new();
-
-				class.push_str(format!(".{} {{", css_stringify(&self.name())).as_str());
-
-				for (key, value) in t.value.as_object().unwrap() {
-					class.push_str(
-					format!(
-							"{}: {};", 
-							key.replace(".", "-").to_case(Case::Kebab),
-							deref_token_value(value.as_str().unwrap().to_string(), ctx, ReplaceMethod::CssVariables)
-						).as_str()
-					);
-				};
-
-				class.push_str("}");
-
-				class
-			}
-		}
-    }
 }
 
 pub type TokenSet = Vec<String>;

@@ -46,12 +46,14 @@ impl CssSerializer {
             value.push_str(":root{");
 
             for id in token_set { 
-				// serialize standard & shadow tokens to a CSS String and add it to value
 				let token = &ctx.get_tokens()[id];
 				let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
 
 				match token {
 					Token::Standard(_) => {
+						value.push_str(token_value);
+					}
+					Token::Color(_) => {
 						value.push_str(token_value);
 					}
 					Token::Shadow(_) => {

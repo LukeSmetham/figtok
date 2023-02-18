@@ -1,5 +1,6 @@
 use std::collections::{HashMap};
 use colors_transform::{Color, Rgb};
+use serde::de::DeserializeOwned;
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
@@ -64,9 +65,9 @@ fn parse_token_set(
 				let token_type: TokenKind = serde_json::from_value(k.clone()).unwrap();
 				// do any transformations to the token data based on its kind
 				let token = match token_type {
-					TokenKind::BoxShadow => Token::Shadow(create_shadow_token(id, slug, value)),
-					TokenKind::Composition | TokenKind::Typography => Token::Composition(create_composition_token(id, slug, value)),
-					_ => Token::Standard(create_token(id, slug, value)),
+					TokenKind::BoxShadow => Token::Shadow(create_token::<ShadowValue>(id, slug, value)),
+					TokenKind::Composition | TokenKind::Typography => Token::Composition(create_token::<serde_json::Value>(id, slug, value)),
+					_ => Token::Standard(create_token::<String>(id, slug, value)),
 				};
 
 
@@ -82,8 +83,7 @@ fn parse_token_set(
 			}
 			None => {
 				// If the "type" (`kind`) property is not present, we have a nested object
-				let nested_data: HashMap<String, serde_json::Value> =
-					serde_json::from_value(value).unwrap();
+				let nested_data: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
 
 				let mut new_prefix = id.clone();
 
@@ -93,22 +93,11 @@ fn parse_token_set(
 	}
 }
 
-fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<String> {
-	let mut token: TokenDefinition<String> = serde_json::from_value(value).unwrap();
-
-	if token.kind == TokenKind::Color {
-		// if the token doesn't contain a reference to
-		// another token, then convert it to rgb.
-		if !REGEX_HB.is_match(&token.value) {
-			let rgb = Rgb::from_hex_str(&token.value).unwrap();
-			token.value = format!(
-				"{}, {}, {}",
-				rgb.get_red(),
-				rgb.get_green(),
-				rgb.get_blue()
-			);
-		}
-	}
+fn create_token<T>(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<T> 
+where
+	T: DeserializeOwned
+{
+	let mut token: TokenDefinition<T> = serde_json::from_value(value).unwrap();
 
 	token.name = id.join(".");
 
@@ -120,32 +109,16 @@ fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Tok
 
 	token
 }
-
-fn create_shadow_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<ShadowValue> {
-	let mut token: TokenDefinition<ShadowValue> = serde_json::from_value(value).unwrap();
-
-	token.name = id.join(".");
-
-	let id_parts = vec![
-		slug.split("/").collect::<Vec<&str>>().join("."),
-		token.name.clone(),
-	];
-	token.id = id_parts.join(".");
-
-	token
-}
-
-fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<serde_json::Value> {
-	let mut token: TokenDefinition<serde_json::Value> = serde_json::from_value(value).unwrap();
-
-	token.name = id.join(".");
-
-	let id_parts = vec![
-		slug.split("/").collect::<Vec<&str>>().join("."),
-		token.name.clone(),
-	];
-	token.id = id_parts.join(".");
-
-	token
-}
-
+// if token.kind == TokenKind::Color {
+// 	// if the token doesn't contain a reference to
+// 	// another token, then convert it to rgb.
+// 	if !REGEX_HB.is_match(&token.value) {
+// 		let rgb = Rgb::from_hex_str(&token.value).unwrap();
+// 		token.value = format!(
+// 			"{}, {}, {}",
+// 			rgb.get_red(),
+// 			rgb.get_green(),
+// 			rgb.get_blue()
+// 		);
+// 	}
+// }
