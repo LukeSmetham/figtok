@@ -3,7 +3,7 @@ use colors_transform::{Color, Rgb};
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
-use crate::tokens::{TokenDefinition, TokenKind, Token, TypographyValue, ShadowValue};
+use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowValue};
 
 pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
 	// Iterate over all of the theme definitions
@@ -65,8 +65,7 @@ fn parse_token_set(
 				// do any transformations to the token data based on its kind
 				let token = match token_type {
 					TokenKind::BoxShadow => Token::Shadow(create_shadow_token(id, slug, value)),
-					TokenKind::Composition => Token::Composition(create_composition_token(id, slug, value)),
-					TokenKind::Typography => Token::Typography(create_typography_token(id, slug, value)),
+					TokenKind::Composition | TokenKind::Typography => Token::Composition(create_composition_token(id, slug, value)),
 					_ => Token::Standard(create_token(id, slug, value)),
 				};
 
@@ -150,16 +149,3 @@ fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::V
 	token
 }
 
-fn create_typography_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<TypographyValue> {
-	let mut token: TokenDefinition<TypographyValue> = serde_json::from_value(value).unwrap();
-	
-	token.name = id.join(".");
-
-	let id_parts = vec![
-		slug.split("/").collect::<Vec<&str>>().join("."),
-		token.name.clone(),
-	];
-	token.id = id_parts.join(".");
-
-	token
-}

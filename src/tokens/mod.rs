@@ -89,7 +89,7 @@ pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: ReplaceMet
 				// Get the value of the referenced token.
 				let replacement = match replace_method {
 
-                    ReplaceMethod::CssVariables => to_variable_name(t.name()),
+                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
                     ReplaceMethod::StaticValues => {
                         // when returning a static value, we recursively call get_token_value to ensure we have
                         // unfurled any tokens that depend on other tokens, and may be indefinitely "nested" in this way.
@@ -147,11 +147,6 @@ impl TokenDefinition<serde_json::Value> {
         String::from("composition value")
     }
 }
-impl TokenDefinition<TypographyValue> {
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-        String::from("typography value")
-    }
-}
 impl TokenDefinition<ShadowValue> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
         let mut value: Vec<String> = vec![];
@@ -179,33 +174,6 @@ impl TokenDefinition<ShadowValue> {
 
         deref_token_value(value.join(", "), ctx, replace_method)
     }
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TypographyValue {
-    #[serde(alias = "fontFamily")]
-    pub font_family: Option<String>,
-    #[serde(alias = "fontWeight")]
-    pub font_weight: Option<String>,
-    #[serde(alias = "lineHeight")]
-    pub line_height: Option<String>,
-    #[serde(alias = "fontSize")]
-    pub font_size: Option<String>,
-    #[serde(alias = "letterSpacing")]
-    pub letter_spacing: Option<String>,
-}
-impl std::fmt::Display for TypographyValue {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"TypographyValue(font-family={}, font-weight={}, font-size={}, line-height={}, letter-spacing={})",
-			self.font_family.clone().unwrap_or(String::from("NONE")),
-			self.font_weight.clone().unwrap_or(String::from("NONE")),
-			self.font_size.clone().unwrap_or(String::from("NONE")),
-			self.line_height.clone().unwrap_or(String::from("NONE")),
-			self.letter_spacing.clone().unwrap_or(String::from("NONE")),
-		)
-	}
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -264,10 +232,13 @@ impl std::fmt::Display for ShadowValue {
     }
 }
 
+fn css_stringify(s: &String) -> String {
+	s.replace(".", "-").to_case(Case::Kebab)
+}
+
 pub enum Token {
     Standard(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
-    Typography(TokenDefinition<TypographyValue>),
     Shadow(TokenDefinition<ShadowValue>),
 }
 impl Token {
@@ -275,7 +246,6 @@ impl Token {
         match self {
             Token::Standard(t) => t.name.clone(),
             Token::Composition(t) => t.name.clone(),
-            Token::Typography(t) => t.name.clone(),
             Token::Shadow(t) => t.name.clone(),
         }
     }
@@ -284,7 +254,6 @@ impl Token {
         match self {
             Token::Standard(t) => t.id.clone(),
             Token::Composition(t) => t.id.clone(),
-            Token::Typography(t) => t.id.clone(),
             Token::Shadow(t) => t.id.clone(),
         }
     }
@@ -293,7 +262,6 @@ impl Token {
         match self {
             Token::Standard(t) => t.kind,
             Token::Composition(t) => t.kind,
-            Token::Typography(t) => t.kind,
             Token::Shadow(t) => t.kind,
         }
     }
@@ -302,7 +270,6 @@ impl Token {
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Composition(t) => t.get_value(ctx, replace_method, nested),
-            Token::Typography(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
         };
 
@@ -317,62 +284,25 @@ impl Token {
     }
 
     pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
-		match &self {
-			Token::Standard(_) => {
+		match self {
+			Token::Standard(_) | Token::Shadow(_) => {
 				format!(
 					"--{}: {};",
-					self.name().replace(".", "-").to_case(Case::Kebab),
+					css_stringify(&self.name()),
 					self.value(ctx, replace_method, false)
 				)
-			}
-			Token::Shadow(_) => {
-				format!(
-					"--{}: {};",
-					self.name().replace(".", "-").to_case(Case::Kebab),
-					self.value(ctx, replace_method, false)
-				)
-			}
-			Token::Typography(t) => {
-				let mut class = String::new();
-
-				let class_selector = t.name.replace(".", "-").to_case(Case::Kebab);
-				class.push_str(format!(".{} {{", class_selector).as_str());
-
-				if let Some(v) = &t.value.font_family {
-					class.push_str(format!("font-family: {};", deref_token_value(v.clone(), ctx, ReplaceMethod::CssVariables).replace(".", "-").to_case(Case::Kebab)).as_str());
-				}
-				
-				if let Some(v) = &t.value.font_size {
-					class.push_str(format!("font-size: {};", deref_token_value(v.clone(), ctx, ReplaceMethod::CssVariables).replace(".", "-").to_case(Case::Kebab)).as_str());
-				}
-				
-				if let Some(v) = &t.value.line_height {
-					class.push_str(format!("line-height: {};", deref_token_value(v.clone(), ctx, ReplaceMethod::CssVariables).replace(".", "-").to_case(Case::Kebab)).as_str());
-				}
-
-				if let Some(v) = &t.value.font_weight {
-					class.push_str(format!("font-weight: {};", deref_token_value(v.clone(), ctx, ReplaceMethod::CssVariables).replace(".", "-").to_case(Case::Kebab)).as_str());
-				}
-				
-				if let Some(v) = &t.value.letter_spacing {
-					class.push_str(format!("letter-spacing: {};", deref_token_value(v.clone(), ctx, ReplaceMethod::CssVariables).replace(".", "-").to_case(Case::Kebab)).as_str());
-				}
-
-				class.push_str("}");
-
-				class
 			}
 			Token::Composition(t) => {
 				let mut class = String::new();
 
-				class.push_str(format!(".{} {{", t.name.replace(".", "-").to_case(Case::Kebab)).as_str());
+				class.push_str(format!(".{} {{", css_stringify(&self.name())).as_str());
 
 				for (key, value) in t.value.as_object().unwrap() {
 					class.push_str(
 					format!(
 							"{}: {};", 
 							key.replace(".", "-").to_case(Case::Kebab),
-							deref_token_value(value.to_string(), ctx, ReplaceMethod::CssVariables).replace(".", "-").replace("\"", "").to_case(Case::Kebab)
+							deref_token_value(value.as_str().unwrap().to_string(), ctx, ReplaceMethod::CssVariables)
 						).as_str()
 					);
 				};

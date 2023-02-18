@@ -2,7 +2,7 @@ use std::default::Default;
 use std::fs;
 
 use crate::{
-	Figtok, tokens::{ReplaceMethod, Token, TokenSet, deref_token_value}
+	Figtok, tokens::{ReplaceMethod, Token}
 };
 
 use super::{
@@ -57,9 +57,6 @@ impl CssSerializer {
 					Token::Shadow(_) => {
 						value.push_str(token_value);
 					}
-					Token::Typography(_) => {
-						classes.push_str(token_value);
-					},
 					Token::Composition(_) => {
 						classes.push_str(token_value);
 					}
