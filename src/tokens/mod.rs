@@ -98,33 +98,42 @@ pub struct TokenDefinition<T> {
 impl TokenDefinition<String> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         // Check if the original_value contains handlebar syntax with a reference to another token.
-        let mut value = if REGEX_HB.is_match(&self.value) {
+        let value = if REGEX_HB.is_match(&self.value) {
 			// if so, follow the reference:
-			deref_token_value(self.value.to_string(), ctx, replace_method)
+			let mut v = deref_token_value(self.value.to_string(), ctx, replace_method);
+			
+			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
+			// we must also insure we aren't nested so that values that are multiple refs deep don't
+			// get wrapped n times.
+			if self.kind == TokenKind::Color && !self.value.starts_with("rgb") && !nested {
+				v = format!("rgb({})", v);
+			}
+			
+			v
         } else {
             // If there is no handlebar reference in the value, just return the value as is.
             self.value.clone()
         };
-
-		if !nested && self.kind == TokenKind::Color {
-			if !self.value.starts_with("rgb") {
-				value = format!("rgb({})", value);
-			}
-		}
 
         value
     }
 }
 impl TokenDefinition<serde_json::Value> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+		println!("{:?}", self.value);
         String::from("composition value")
     }
 }
-impl TokenDefinition<Vec<ShadowLayer>> {
+impl TokenDefinition<TypographyValue> {
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+        String::from("typography value")
+    }
+}
+impl TokenDefinition<ShadowValue> {
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
         let mut value: Vec<String> = vec![];
 
-        for layer in &self.value {
+        for layer in &self.value.0 {
             match layer.kind {
                 ShadowLayerKind::DropShadow => value.push(format!(
                     "{}px {}px {}px {}px {}",
@@ -161,6 +170,19 @@ pub struct TypographyValue {
     font_size: Option<String>,
     #[serde(alias = "letterSpacing")]
     letter_spacing: Option<String>,
+}
+impl std::fmt::Display for TypographyValue {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"TypographyValue(font-family={}, font-weight={}, font-size={}, line-height={}, letter-spacing={})",
+			self.font_family.clone().unwrap_or(String::from("inherit")),
+			self.font_weight.clone().unwrap_or(String::from("inherit")),
+			self.font_size.clone().unwrap_or(String::from("inherit")),
+			self.line_height.clone().unwrap_or(String::from("inherit")),
+			self.letter_spacing.clone().unwrap_or(String::from("inherit")),
+		)
+	}
 }
 impl IntoIterator for TypographyValue {
     type Item = String;
@@ -201,6 +223,15 @@ pub enum ShadowLayerKind {
     #[serde(alias = "dropShadow")]
     DropShadow,
 }
+impl std::fmt::Display for ShadowLayerKind {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			ShadowLayerKind::InnerShadow => write!(f, "InnerShadow"),
+			ShadowLayerKind::DropShadow => write!(f, "DropShadow"),
+		}
+	}
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShadowLayer {
     color: String,
@@ -211,18 +242,48 @@ pub struct ShadowLayer {
     blur: String,
     spread: String,
 }
+impl std::fmt::Display for ShadowLayer {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		write!(
+			f,
+			"ShadowLayer(color={}, type={}, x={}, y={}, blur={}, spread={})",
+			self.color,
+			self.kind,
+			self.x,
+			self.y,
+			self.blur,
+			self.spread
+		)
+	}
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ShadowValue(pub Vec<ShadowLayer>);
+
+impl std::fmt::Display for ShadowValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let shadow_layers = self
+			.0
+            .iter()
+            .map(|shadow_layer| shadow_layer.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        write!(f, "[{}]", shadow_layers)
+    }
+}
 
 pub enum Token {
     Standard(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
-    // Typography(TokenDefinition<TypographyValue>),
-    Shadow(TokenDefinition<Vec<ShadowLayer>>),
+    Typography(TokenDefinition<TypographyValue>),
+    Shadow(TokenDefinition<ShadowValue>),
 }
 impl Token {
     pub fn name(&self) -> String {
         match self {
             Token::Standard(t) => t.name.clone(),
             Token::Composition(t) => t.name.clone(),
+            Token::Typography(t) => t.name.clone(),
             Token::Shadow(t) => t.name.clone(),
         }
     }
@@ -231,6 +292,7 @@ impl Token {
         match self {
             Token::Standard(t) => t.id.clone(),
             Token::Composition(t) => t.id.clone(),
+            Token::Typography(t) => t.id.clone(),
             Token::Shadow(t) => t.id.clone(),
         }
     }
@@ -239,6 +301,7 @@ impl Token {
         match self {
             Token::Standard(t) => t.kind,
             Token::Composition(t) => t.kind,
+            Token::Typography(t) => t.kind,
             Token::Shadow(t) => t.kind,
         }
     }
@@ -247,6 +310,7 @@ impl Token {
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Composition(t) => t.get_value(ctx, replace_method, nested),
+            Token::Typography(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
         };
 

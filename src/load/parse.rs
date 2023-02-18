@@ -1,9 +1,10 @@
-use std::collections::HashMap;
+use std::collections::{HashMap};
 use colors_transform::{Color, Rgb};
+use serde::Deserialize;
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
-use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowLayer};
+use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowLayer, TypographyValue, ShadowValue};
 
 pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
 	// Iterate over all of the theme definitions
@@ -64,20 +65,16 @@ fn parse_token_set(
 				let token_type: TokenKind = serde_json::from_value(k.clone()).unwrap();
 				// do any transformations to the token data based on its kind
 				let token = match token_type {
-					TokenKind::BoxShadow => create_shadow_token(id, slug, value),
-					TokenKind::Composition => create_composition_token(id, slug, value),
-					TokenKind::Typography => create_composition_token(id, slug, value),
-					_ => create_token(id, slug, value),
+					TokenKind::BoxShadow => Token::Shadow(create_shadow_token(id, slug, value)),
+					TokenKind::Composition => Token::Composition(create_composition_token(id, slug, value)),
+					TokenKind::Typography => Token::Typography(create_typography_token(id, slug, value)),
+					_ => Token::Standard(create_token(id, slug, value)),
 				};
 
 
 				// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
 				// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
-				let token_id = match &token {
-					Token::Standard(t) => t.id.clone(),
-					Token::Composition(t) => t.id.clone(),
-					Token::Shadow(t) => t.id.clone(),
-				};
+				let token_id = token.id();
 
 				ctx.token_sets.entry(slug.to_string()).and_modify(|v| {
 					v.push(token_id.clone());
@@ -98,7 +95,7 @@ fn parse_token_set(
 	}
 }
 
-fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Token {
+fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<String> {
 	let mut token: TokenDefinition<String> = serde_json::from_value(value).unwrap();
 
 	if token.kind == TokenKind::Color {
@@ -123,10 +120,24 @@ fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Tok
 	];
 	token.id = id_parts.join(".");
 
-	Token::Standard(token)
+	token
 }
 
-fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Token {
+fn create_shadow_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<ShadowValue> {
+	let mut token: TokenDefinition<ShadowValue> = serde_json::from_value(value).unwrap();
+
+	token.name = id.join(".");
+
+	let id_parts = vec![
+		slug.split("/").collect::<Vec<&str>>().join("."),
+		token.name.clone(),
+	];
+	token.id = id_parts.join(".");
+
+	token
+}
+
+fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<serde_json::Value> {
 	let mut token: TokenDefinition<serde_json::Value> = serde_json::from_value(value).unwrap();
 
 	token.name = id.join(".");
@@ -137,11 +148,11 @@ fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::V
 	];
 	token.id = id_parts.join(".");
 
-	Token::Composition(token)
+	token
 }
 
-fn create_shadow_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Token {
-	let mut token: TokenDefinition<Vec<ShadowLayer>> = serde_json::from_value(value).unwrap();
+fn create_typography_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> TokenDefinition<TypographyValue> {
+	let mut token: TokenDefinition<TypographyValue> = serde_json::from_value(value).unwrap();
 
 	token.name = id.join(".");
 
@@ -151,5 +162,5 @@ fn create_shadow_token(id: Vec<String>, slug: &String, value: serde_json::Value)
 	];
 	token.id = id_parts.join(".");
 
-	Token::Shadow(token)
+	token
 }
