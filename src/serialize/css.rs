@@ -2,93 +2,91 @@ use std::default::Default;
 use std::fs;
 
 use crate::{
-	Figtok, tokens::{ReplaceMethod, Token}
+    tokens::{ReplaceMethod, Token},
+    Figtok,
 };
 
-use super::{
-	Serializer,
-};
+use super::Serializer;
 
 #[derive(Default)]
 pub struct CssSerializer {}
 impl Serializer for CssSerializer {
-	/// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
+    /// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
     /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
     /// can be imported individually by the user for more granularity, or if they don't use themes.
     fn serialize(&self, ctx: &Figtok) {
-
         self.serialize_token_sets(ctx);
 
-		// Themes are not just collections of tokens, but collection of sets. 
-		// We already output each set as a CSS file above, so all we need are
-		// @import statements. 
-		// 
-		// However, for more complex setups in the future,
-		// or for things like composition tokens, we may want a 
-		// way to also write classes, or namespace variables 
-		// via class name/id inside the themes root css file.
-		self.serialize_themes(ctx);
+        // Themes are not just collections of tokens, but collection of sets.
+        // We already output each set as a CSS file above, so all we need are
+        // @import statements.
+        //
+        // However, for more complex setups in the future,
+        // or for things like composition tokens, we may want a
+        // way to also write classes, or namespace variables
+        // via class name/id inside the themes root css file.
+        self.serialize_themes(ctx);
     }
 }
 impl CssSerializer {
-	pub fn new() -> Self {
+    pub fn new() -> Self {
         CssSerializer {}
     }
 
-	fn serialize_token_sets(&self, ctx: &Figtok) {
-		// Loop over the token sets and create a CSS file for each
+    fn serialize_token_sets(&self, ctx: &Figtok) {
+        // Loop over the token sets and create a CSS file for each
         for (set_name, token_set) in ctx.get_token_sets() {
-			// init the string that will hold our css file
+            // init the string that will hold our css file
             let mut value = String::new();
-			let mut classes = String::new(); 
+            let mut classes = String::new();
 
-			// add the opening line
+            // add the opening line
             value.push_str(":root{");
 
-            for id in token_set { 
-				let token = &ctx.get_tokens()[id];
-				let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
+            for id in token_set {
+                let token = &ctx.get_tokens()[id];
+                let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
 
-				match token {
-					Token::Standard(_) => {
-						value.push_str(token_value);
-					}
-					Token::Color(_) => {
-						value.push_str(token_value);
-					}
-					Token::Shadow(_) => {
-						value.push_str(token_value);
-					}
-					Token::Composition(_) => {
-						classes.push_str(token_value);
-					}
-				}
+                match token {
+                    Token::Standard(_) => {
+                        value.push_str(token_value);
+                    }
+                    Token::Color(_) => {
+                        value.push_str(token_value);
+                    }
+                    Token::Shadow(_) => {
+                        value.push_str(token_value);
+                    }
+                    Token::Composition(_) => {
+                        classes.push_str(token_value);
+                    }
+                }
             }
 
-			// add the final curly bracket
+            // add the final curly bracket
             value.push_str("}");
 
-			// Add the classes to the end of the value str.
-			value.push_str(classes.as_str());
+            // Add the classes to the end of the value str.
+            value.push_str(classes.as_str());
 
-			// Now we make sure the output directory exists, and write the CSS file to disk
+            // Now we make sure the output directory exists, and write the CSS file to disk
 
-			// Split the set name by any /'s in case they are nested but remove the
-			// last portion as this will be the file name not a directory
+            // Split the set name by any /'s in case they are nested but remove the
+            // last portion as this will be the file name not a directory
             let dir = match set_name.rsplit_once("/") {
                 Some((d, _)) => d,
                 None => "",
-			};
+            };
 
-			// Ensure the directories we need exist
+            // Ensure the directories we need exist
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
-			// Write the css file.
+            // Write the css file.
             let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), value);
         }
-	}
+    }
 
-	fn serialize_themes(&self, ctx: &Figtok) {
-		// TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
+    fn serialize_themes(&self, ctx: &Figtok) {
+        // TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
         // Iterate over the themes and create import statements for each included set.
         for (name, sets) in ctx.get_themes() {
             let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
@@ -108,5 +106,5 @@ impl CssSerializer {
                 value,
             );
         }
-	}
+    }
 }

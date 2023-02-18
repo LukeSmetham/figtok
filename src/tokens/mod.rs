@@ -141,10 +141,9 @@ impl Token {
 
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         let mut value = match self {
-            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
-            Token::Color(t) => t.get_value(ctx, replace_method, nested),
-            Token::Composition(t) => t.get_value(ctx, replace_method, nested),
+            Token::Standard(t) | Token::Color(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
+            Token::Composition(t) => t.get_value(ctx, replace_method),
         };
 
 		// We check a regex for a css arithmetic expression and if we have a match,
@@ -166,28 +165,7 @@ impl Token {
 					self.value(ctx, replace_method, false)
 				)
 			}
-			Token::Composition(t) => {
-				let mut class = String::new();
-
-				class.push_str(format!(".{} {{", css_stringify(&self.name())).as_str());
-
-				for (key, value) in t.value.as_object().unwrap() {
-					// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
-					//so don't already exist on ctx - but may still contain references to tokens.
-					let token_value = deref_token_value(value.as_str().unwrap().to_string(), ctx, replace_method);
-					class.push_str(
-					format!(
-							"{}: {};", 
-							key.replace(".", "-").to_case(Case::Kebab),
-							token_value
-						).as_str()
-					);
-				};
-
-				class.push_str("}");
-
-				class
-			}
+			Token::Composition(_) => self.value(ctx, replace_method, false),
 		}
     }
 }
@@ -207,6 +185,7 @@ pub struct TokenDefinition<T> {
     pub id: String,
 }
 impl TokenDefinition<String> {
+	// Follows references and returns a string value - this is super simple and applies to most tokens other than Composition, Typography and Shadow.
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         // Check if the original_value contains handlebar syntax with a reference to another token.
         let value = if REGEX_HB.is_match(&self.value) {
@@ -230,11 +209,36 @@ impl TokenDefinition<String> {
     }
 }
 impl TokenDefinition<serde_json::Value> {
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-        String::from("composition value")
+	/// For composition tokens, it constructs a css class containing all of the inner values so they can be applied at once.
+	/// Figtok also treats Typography tokens as composition tokens after the parse step.
+	/// 
+	/// We can then write these to css separately from the variables.
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+       	let mut class = String::new();
+
+		class.push_str(format!(".{} {{", css_stringify(&self.name)).as_str());
+
+		for (key, value) in self.value.as_object().unwrap() {
+			// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
+			//so don't already exist on ctx - but may still contain references to tokens.
+			let token_value = deref_token_value(value.as_str().unwrap().to_string(), ctx, replace_method);
+			class.push_str(
+			format!(
+					"{}: {};", 
+					key.replace(".", "-").to_case(Case::Kebab),
+					token_value
+				).as_str()
+			);
+		};
+
+		class.push_str("}");
+
+		class
     }
 }
 impl TokenDefinition<ShadowValue> {
+	/// Shadow values can be expressed as a single string. Because of this it can take the Vec<ShadowLayer>
+	/// from serializing the JSON, and deref + concatenate it all together into a single css variable. 
     pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
         let mut value: Vec<String> = vec![];
 
@@ -264,22 +268,6 @@ impl TokenDefinition<ShadowValue> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum ShadowLayerKind {
-    #[serde(alias = "innerShadow")]
-    InnerShadow,
-    #[serde(alias = "dropShadow")]
-    DropShadow,
-}
-impl std::fmt::Display for ShadowLayerKind {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			ShadowLayerKind::InnerShadow => write!(f, "InnerShadow"),
-			ShadowLayerKind::DropShadow => write!(f, "DropShadow"),
-		}
-	}
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct ShadowLayer {
     color: String,
     #[serde(alias = "type")]
@@ -289,19 +277,13 @@ pub struct ShadowLayer {
     blur: String,
     spread: String,
 }
-impl std::fmt::Display for ShadowLayer {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		write!(
-			f,
-			"ShadowLayer(color={}, type={}, x={}, y={}, blur={}, spread={})",
-			self.color,
-			self.kind,
-			self.x,
-			self.y,
-			self.blur,
-			self.spread
-		)
-	}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum ShadowLayerKind {
+    #[serde(alias = "innerShadow")]
+    InnerShadow,
+    #[serde(alias = "dropShadow")]
+    DropShadow,
 }
 
 pub type TokenSet = Vec<String>;
