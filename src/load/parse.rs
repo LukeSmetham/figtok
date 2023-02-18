@@ -1,10 +1,31 @@
 use std::collections::HashMap;
 use colors_transform::{Color, Rgb};
-use convert_case::{Case, Casing};
 
 use crate::Figtok;
 use crate::tokens::helpers::REGEX_HB;
-use crate::tokens::{TokenDefinition, TokenKind, TypographyValue, CompositionTokenDefinition, CompositionToken};
+use crate::tokens::{TokenDefinition, TokenKind, Token};
+
+pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
+	// Iterate over all of the theme definitions
+	for theme in themes {
+		// Get the theme's name
+		let theme_name =
+			serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
+
+		// Get the selectedTokenSets property as a serde_json::Value
+		let value = theme.get("selectedTokenSets").unwrap().to_owned();
+		let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
+
+		// Remove any disabled token sets from the HashMap, leaving only "enabled" and "source"
+		let enabled_sets: HashMap<String, String> = token_sets
+			.into_iter()
+			.filter(|(_, v)| v != "disabled")
+			.collect();
+
+		// Get the theme name, and then add the list of enabled sets under the theme name to ctx.
+		ctx.add_theme(theme_name, enabled_sets);
+	}
+}
 
 pub fn parse_token_sets(ctx: &mut Figtok, token_sets: HashMap<String, HashMap<String, serde_json::Value>>) {
 	// Parse all of the tokens and token_sets recursively.
@@ -41,26 +62,27 @@ fn parse_token_set(
 			// If the "type" property is present, we have a token definition
 			Some(k) => {
 				let token_type: TokenKind = serde_json::from_value(k.clone()).unwrap();
-
 				// do any transformations to the token data based on its kind
-				match token_type {
-					TokenKind::BorderRadius => create_token(ctx, id, slug, value),
-					TokenKind::BorderWidth => create_token(ctx, id, slug, value),
-					TokenKind::BoxShadow => todo!(),
-					TokenKind::Color => create_token(ctx, id, slug, value),
-					TokenKind::Composition => todo!(),
-					TokenKind::Dimension => create_token(ctx, id, slug, value),
-					TokenKind::FontFamily => create_token(ctx, id, slug, value),
-					TokenKind::FontWeights => create_token(ctx, id, slug, value),
-					TokenKind::FontSize => create_token(ctx, id, slug, value),
-					TokenKind::LetterSpacing => create_token(ctx, id, slug, value),
-					TokenKind::LineHeight => create_token(ctx, id, slug, value),
-					TokenKind::Opacity => create_token(ctx, id, slug, value),
-					TokenKind::Sizing => create_token(ctx, id, slug, value),
-					TokenKind::Spacing => create_token(ctx, id, slug, value),
-					TokenKind::Typography => todo!(),
-					TokenKind::Other => create_token(ctx, id, slug, value),
+				let token = match token_type {
+					TokenKind::BoxShadow => create_composition_token(id, slug, value),
+					TokenKind::Composition => create_composition_token(id, slug, value),
+					TokenKind::Typography => create_composition_token(id, slug, value),
+					_ => create_token(id, slug, value),
 				};
+
+
+				// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
+				// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
+				let token_id = match &token {
+					Token::Standard(t) => t.id.clone(),
+					Token::Composition(t) => t.id.clone()
+				};
+
+				ctx.token_sets.entry(slug.to_string()).and_modify(|v| {
+					v.push(token_id.clone());
+				});
+
+				ctx.add_token(token_id, token);
 			}
 			None => {
 				// If the "type" (`kind`) property is not present, we have a nested object
@@ -75,8 +97,8 @@ fn parse_token_set(
 	}
 }
 
-fn create_token(ctx: &mut Figtok, id: Vec<String>, slug: &String, value: serde_json::Value) {
-	let mut token: TokenDefinition = serde_json::from_value(value).unwrap();
+fn create_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Token {
+	let mut token: TokenDefinition<String> = serde_json::from_value(value).unwrap();
 
 	if token.kind == TokenKind::Color {
 		// if the token doesn't contain a reference to
@@ -100,17 +122,11 @@ fn create_token(ctx: &mut Figtok, id: Vec<String>, slug: &String, value: serde_j
 	];
 	token.id = id_parts.join(".");
 
-	// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
-	// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
-	ctx.token_sets.entry(slug.to_string()).and_modify(|v| {
-		v.push(token.id.clone());
-	});
-
-	ctx.add_token(token.id.clone(), token);
+	Token::Standard(token)
 }
 
-fn create_composition_token(ctx: &mut Figtok, id: Vec<String>, slug: &String, value: serde_json::Value) {
-	let mut token: CompositionTokenDefinition = serde_json::from_value(value).unwrap();
+fn create_composition_token(id: Vec<String>, slug: &String, value: serde_json::Value) -> Token {
+	let mut token: TokenDefinition<serde_json::Value> = serde_json::from_value(value).unwrap();
 
 	token.name = id.join(".");
 
@@ -120,64 +136,5 @@ fn create_composition_token(ctx: &mut Figtok, id: Vec<String>, slug: &String, va
 	];
 	token.id = id_parts.join(".");
 
-	// Here we can loop over each inner key of the composition/typo/shadow token, creating a unique token for each,
-	// followed by creating a CompositionTokenDefinition for each that references them all.
-
-	// CompositionTokens are almost identical to a regular token with the exception that the value property of the object is itself an object rather than a string.
-	let comp_value: HashMap<String, String> = serde_json::from_value(token.value).unwrap();
-
-	let mut inner_tokens: Vec<String> = Vec::new();
-
-	for (k,v) in comp_value {
-		println!("{:?}, {}, {}", token.id, k.to_case(Case::Kebab), v);
-
-		let inner_token = TokenDefinition {
-			name: format!("{}.{}", token.name, k),
-			id: format!("{}.{}", token.id, k),
-			kind: token.kind.clone(),
-			value: v
-		};
-
-		inner_tokens.push(inner_token.id.clone());
-
-		ctx.add_token(inner_token.id.clone(), inner_token);
-	}
-
-	// Store the token in it's respective token_set, as a KV pair of [token.id, token.name].
-	// We can later use this for lookups by id, and serializing tokens under their name (the name property is relative to the theme.)
-	ctx.token_sets.entry(slug.to_string()).and_modify(|v| {
-		v.push(token.id.clone());
-	});
-
-	ctx.add_composition_token(token.id.clone(), CompositionToken {
-		name: token.name, 
-		id: token.id,
-		tokens: inner_tokens
-	});
-
-	// ! This doesn't quite work although the compiler is happy
-	// ! - adding to the token set means we need to do a second lookup when parsing if the first one into "tokens" fails, to see if the value is a compositional token.
-	// ! - we have created a token for each "inner token", and referenced them in the CompositionToken, but how do we serialize this? Right now we have no way of turning the inner token called *.*.font-size a class ".*.* { font-size: value }"
-}
-
-pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
-	// Iterate over all of the theme definitions
-	for theme in themes {
-		// Get the theme's name
-		let theme_name =
-			serde_json::from_value::<String>(theme.get("name").unwrap().to_owned()).unwrap();
-
-		// Get the selectedTokenSets property as a serde_json::Value
-		let value = theme.get("selectedTokenSets").unwrap().to_owned();
-		let token_sets = serde_json::from_value::<HashMap<String, String>>(value).unwrap();
-
-		// Remove any disabled token sets from the HashMap, leaving only "enabled" and "source"
-		let enabled_sets: HashMap<String, String> = token_sets
-			.into_iter()
-			.filter(|(_, v)| v != "disabled")
-			.collect();
-
-		// Get the theme name, and then add the list of enabled sets under the theme name to self.themes.
-		ctx.add_theme(theme_name, enabled_sets);
-	}
+	Token::Composition(token)
 }

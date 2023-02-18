@@ -10,7 +10,6 @@ use crate::{
 
 use super::{
 	Serializer,
-	utils
 };
 
 #[derive(Default)]
@@ -50,7 +49,7 @@ impl CssSerializer {
 
             for id in token_set { // serialize each token to a CSS String and add it to value
                 let token = &ctx.get_tokens()[id];
-                value.push_str(self.serialize_one(ctx, &token).as_str());
+                value.push_str(&token.to_css(ctx));
             }
 
 			// add the final curly bracket
@@ -96,11 +95,4 @@ impl CssSerializer {
             );
         }
 	}
-
-	/// Take a single TokenDefinition, and serialize it to a CSS string. This function will also follow any tokens containing a reference
-	/// and enrich the value to use the var() syntax to keep the relationship between values alive once serialized to CSS.
-    fn serialize_one(&self, ctx: &Figtok, token: &TokenDefinition) -> String {
-        let value = utils::get_token_value(ctx, token, utils::ReplaceMethod::CssVariables, false);
-        format!("--{}: {};", token.name.replace(".", "-").to_case(Case::Kebab), value)
-    }
 }

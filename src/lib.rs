@@ -5,13 +5,13 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-use tokens::{TokenDefinition, Tokens, TokenSet, TokenSets, Themes, Theme, CompositionTokens, CompositionToken};
+use tokens::{Token, Tokens, TokenSet, TokenSets, Themes, Theme};
 
 pub mod load;
 use load::load;
 
 pub mod serialize;
-use serialize::{Serializer, CssSerializer, JsonSerializer};
+use serialize::{Serializer, CssSerializer};
 
 use std::{error::Error, collections::HashMap};
 use std::fs;
@@ -23,7 +23,6 @@ pub struct Figtok {
 
 	tokens: Tokens,
     token_sets: TokenSets,
-	composition_tokens: CompositionTokens,
     themes: Themes,
 
     pub serializer: Box<dyn Serializer>,
@@ -33,7 +32,7 @@ impl Figtok {
     pub fn new(format: &String, entry_path: &String, output_path: &String) -> Self {
 		let serializer: Box<dyn Serializer> = match format.as_str() {
 			"css" => Box::new(CssSerializer::new()),
-			"json" => Box::new(JsonSerializer::new()),
+			// "json" => Box::new(JsonSerializer::new()),
 			f => panic!("Unsupported output format {}", f)
 		};
 
@@ -42,7 +41,6 @@ impl Figtok {
 			output_path: output_path.clone(),
 			tokens: HashMap::new(),
             token_sets: HashMap::new(),
-			composition_tokens: HashMap::new(),
             themes: HashMap::new(),
 			serializer,
 		};
@@ -88,24 +86,16 @@ impl Figtok {
 		&self.token_sets
 	}
 
-	pub fn get_composition_tokens(&self) -> &CompositionTokens {
-		&self.composition_tokens
-	}
-
 	pub fn get_themes(&self) -> &Themes {
 		&self.themes
 	}
 
-	pub fn add_token(&mut self, key: String, value: TokenDefinition) {
+	pub fn add_token(&mut self, key: String, value: Token) {
 		self.tokens.insert(key, value);
 	}
 	
 	pub fn add_token_set(&mut self, key: String, value: TokenSet) {
 		self.token_sets.insert(key, value);
-	}
-
-	pub fn add_composition_token(&mut self, key: String, value: CompositionToken) {
-		self.composition_tokens.insert(key, value);
 	}
 
 	pub fn add_theme(&mut self, key: String, value: Theme) {
