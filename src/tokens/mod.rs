@@ -121,7 +121,7 @@ impl TokenDefinition<serde_json::Value> {
     }
 }
 impl TokenDefinition<Vec<ShadowLayer>> {
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
         let mut value: Vec<String> = vec![];
 
         for layer in &self.value {
@@ -247,7 +247,7 @@ impl Token {
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Composition(t) => t.get_value(ctx, replace_method, nested),
-            Token::Shadow(t) => t.get_value(ctx, replace_method, nested),
+            Token::Shadow(t) => t.get_value(ctx, replace_method),
         };
 
 		// We check a regex for a css arithmetic expression and if we have a match,
