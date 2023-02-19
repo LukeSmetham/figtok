@@ -5,6 +5,7 @@ use colors_transform::{Color, Rgb};
 use convert_case::{Case, Casing};
 use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use std::collections::HashMap;
 
 use self::helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
@@ -79,12 +80,20 @@ impl ToString for TokenKind {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShadowValue(pub Vec<ShadowLayer>);
 
+/// The Token enum encapsulates our different TokenDefinition variants, allowing us to store
+/// them all together a single type (i.e. in a collection) whilst parsing/serializing each one
+/// differently where necessary.
+/// 
+/// The Token enum also has some "getter" functions that alias the shared properties between token types
+/// to give us an easy way to access inner values by a ref to an enum Token, and reduce the amount of match
+/// statements everywhere.
 pub enum Token {
     Standard(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
     Shadow(TokenDefinition<ShadowValue>),
 }
 impl Token {
+	/// Get the token name from the underlying TokenDefinition<T>
     pub fn name(&self) -> String {
         match self {
             Token::Standard(t) => t.name.clone(),
@@ -93,6 +102,7 @@ impl Token {
         }
     }
 
+	/// Get the token id from the underlying TokenDefinition<T>
     pub fn id(&self) -> String {
         match self {
             Token::Standard(t) => t.id.clone(),
@@ -101,6 +111,7 @@ impl Token {
         }
     }
 
+	/// Get the token kind from the underlying TokenDefinition<T>
     pub fn kind(&self) -> TokenKind {
         match self {
             Token::Standard(t) => t.kind,
@@ -109,6 +120,9 @@ impl Token {
         }
     }
 
+	/// Get the token value. This method calls the get_value() method of a TokenDefinition<T>, we can impl a different 
+	/// get_value for each possible value of T that we want to support, ultimately producing a string containing the value
+	/// of the token.
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
@@ -126,6 +140,7 @@ impl Token {
         value
     }
 
+	// Serialize the token to a valid CSS string. 
     pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
 		match self {
 			Token::Standard(_) | Token::Shadow(_) => {
@@ -138,6 +153,27 @@ impl Token {
 			Token::Composition(_) => self.value(ctx, replace_method, false),
 		}
     }
+
+	// Serialize the token to a valid JSON string. 
+	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
+		match &self {
+			Token::Standard(_) | Token::Shadow(_) => {
+				let token_name = self.name();
+				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
+				key_parts.reverse();
+
+				let value = self.value(ctx, replace_method, false);
+				
+				let mut j = json!(value);
+				for key in key_parts {
+					j = json!({ key: j })
+				};
+
+				j
+			}
+			_ => json!({"": ""})
+		}
+	}
 }
 
 #[derive(Serialize, Deserialize, Debug)]

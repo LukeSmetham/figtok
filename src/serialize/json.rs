@@ -1,12 +1,10 @@
 use std::{default::Default, fs};
-use serde_json::json;
 use merge_struct::merge;
 
-use crate::{tokens::TokenDefinition, Figtok};
+use crate::{Figtok, tokens::ReplaceMethod};
 
 use super::{
 	Serializer,
-	utils,
 };
 
 #[derive(Default)]
@@ -30,7 +28,7 @@ impl JsonSerializer {
 
 			for id in token_set {
 				let token = &ctx.get_tokens()[id];
-				value = merge(&value, &self.serialize_one(ctx, &token)).unwrap();
+				value = merge(&value, &token.to_json(ctx, ReplaceMethod::StaticValues)).unwrap();
 			}
 
 			// Now we make sure the output directory exists, and write the CSS file to disk
@@ -42,24 +40,10 @@ impl JsonSerializer {
                 None => "",
 			};
 
-			// Ensure the directories we need exist
+			// Ensure the directories we need exist for token sets
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
 			// Write the json file.
             let _ = fs::write(format!("{}/{}.{}", ctx.output_path, set_name, "json"), value.to_string());
 		}
 	}
-
-	fn serialize_one(&self, ctx: &Figtok, token: &TokenDefinition) -> serde_json::Value {
-		let mut key_parts = token.name.split(".").collect::<Vec<&str>>();
-		key_parts.reverse();
-
-        let value = utils::get_token_value(ctx, token, utils::ReplaceMethod::StaticValues, false);
-		
-		let mut j = json!(value);
-		for key in key_parts {
-			j = json!({ key: j })
-		};
-
-		j
-    }
 }

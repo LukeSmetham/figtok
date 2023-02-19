@@ -11,7 +11,7 @@ pub mod load;
 use load::load;
 
 pub mod serialize;
-use serialize::{Serializer, CssSerializer};
+use serialize::{Serializer, CssSerializer, JsonSerializer};
 
 use std::{error::Error, collections::HashMap};
 use std::fs;
@@ -32,11 +32,11 @@ impl Figtok {
     pub fn new(format: &String, entry_path: &String, output_path: &String) -> Self {
 		let serializer: Box<dyn Serializer> = match format.as_str() {
 			"css" => Box::new(CssSerializer::new()),
-			// "json" => Box::new(JsonSerializer::new()),
+			"json" => Box::new(JsonSerializer::new()),
 			f => panic!("Unsupported output format {}", f)
 		};
 
-		let figtok = Figtok {
+		let mut figtok = Figtok {
 			entry_path: entry_path.clone(),
 			output_path: output_path.clone(),
 			tokens: HashMap::new(),
@@ -50,7 +50,7 @@ impl Figtok {
 		figtok
     }
 
-	fn prepare(&self) -> Result<(), Box<dyn Error>> {
+	fn prepare(&mut self) -> Result<(), Box<dyn Error>> {
 		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
         if Path::new(&self.output_path).is_dir() {
             fs::remove_dir_all(&self.output_path)?;
@@ -67,12 +67,10 @@ impl Figtok {
             )));
         };
 
+		load(self);
+
 		Ok(())
 	}
-
-    pub fn load(&mut self) {
-		load(self);
-    }
 
     pub fn export(&self) {
         self.serializer.serialize(self);

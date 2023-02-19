@@ -71,7 +71,7 @@ impl CssSerializer {
                 Some((d, _)) => d,
                 None => "",
             };
-            // Ensure the directories we need exist
+            // Ensure the directories we need exist for token sets
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
             // Write the css file.
             let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), value);

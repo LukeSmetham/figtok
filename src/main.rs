@@ -20,9 +20,8 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-	let mut figtok = Figtok::new(&args.format, &args.entry, &args.output);
+	let figtok = Figtok::new(&args.format, &args.entry, &args.output);
 
-    figtok.load();
     figtok.export();
 
     println!("Done! Check {} for the built files.", args.output);
