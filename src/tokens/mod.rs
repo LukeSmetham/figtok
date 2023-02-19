@@ -76,9 +76,6 @@ impl ToString for TokenKind {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ShadowValue(pub Vec<ShadowLayer>);
-
 /// The Token enum encapsulates our different TokenDefinition variants, allowing us to store
 /// them all together a single type (i.e. in a collection) whilst parsing/serializing each one
 /// differently where necessary.
@@ -107,15 +104,6 @@ impl Token {
             Token::Standard(t) => t.id.clone(),
             Token::Composition(t) => t.id.clone(),
             Token::Shadow(t) => t.id.clone(),
-        }
-    }
-
-	/// Get the token kind from the underlying TokenDefinition<T>
-    pub fn kind(&self) -> TokenKind {
-        match self {
-            Token::Standard(t) => t.kind,
-            Token::Composition(t) => t.kind,
-            Token::Shadow(t) => t.kind,
         }
     }
 
@@ -283,6 +271,9 @@ impl TokenDefinition<ShadowValue> {
         deref_token_value(value.join(", "), ctx, replace_method)
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ShadowValue(pub Vec<ShadowLayer>);
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ShadowLayer {

@@ -5,7 +5,7 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-use tokens::{Token, Tokens, TokenSet, TokenSets, Themes, Theme};
+use tokens::{Tokens, TokenSets, Themes};
 
 pub mod load;
 use load::load;
@@ -74,29 +74,5 @@ impl Figtok {
 
     pub fn export(&self) {
         self.serializer.serialize(self);
-	}
-
-	pub fn get_tokens(&self) -> &Tokens {
-		&self.tokens
-	}
-
-	pub fn get_token_sets(&self) -> &TokenSets {
-		&self.token_sets
-	}
-
-	pub fn get_themes(&self) -> &Themes {
-		&self.themes
-	}
-
-	pub fn add_token(&mut self, key: String, value: Token) {
-		self.tokens.insert(key, value);
-	}
-	
-	pub fn add_token_set(&mut self, key: String, value: TokenSet) {
-		self.token_sets.insert(key, value);
-	}
-
-	pub fn add_theme(&mut self, key: String, value: Theme) {
-		self.themes.insert(key, value);
 	}
 }

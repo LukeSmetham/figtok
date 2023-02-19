@@ -35,7 +35,7 @@ impl CssSerializer {
 
     fn serialize_token_sets(&self, ctx: &Figtok) {
         // Loop over the token sets and create a CSS file for each
-        for (set_name, token_set) in ctx.get_token_sets() {
+        for (set_name, token_set) in &ctx.token_sets {
             // init the string that will hold our css file
             let mut value = String::new();
             let mut classes = String::new();
@@ -44,8 +44,8 @@ impl CssSerializer {
             value.push_str(":root{");
 
             for id in token_set {
-                let token = &ctx.get_tokens()[id];
-                let token_value = &ctx.get_tokens()[id].to_css(ctx, ReplaceMethod::CssVariables);
+                let token = &ctx.tokens[id];
+                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables);
 
                 match token {
                     Token::Standard(_) | Token::Shadow(_) => {
@@ -81,7 +81,7 @@ impl CssSerializer {
     fn serialize_themes(&self, ctx: &Figtok) {
         // TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
         // Iterate over the themes and create import statements for each included set.
-        for (name, sets) in ctx.get_themes() {
+        for (name, sets) in &ctx.themes {
             let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
 
             let mut value = String::new();

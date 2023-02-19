@@ -23,11 +23,11 @@ impl JsonSerializer {
 	}
 
 	pub fn serialize_token_sets(&self, ctx: &Figtok) {
-		for (set_name, token_set) in ctx.get_token_sets() {
+		for (set_name, token_set) in &ctx.token_sets {
 			let mut value = serde_json::from_str("{}").unwrap();
 
 			for id in token_set {
-				let token = &ctx.get_tokens()[id];
+				let token = &ctx.tokens[id];
 				value = merge(&value, &token.to_json(ctx, ReplaceMethod::StaticValues)).unwrap();
 			}
 

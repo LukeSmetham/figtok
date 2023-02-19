@@ -22,7 +22,7 @@ pub fn parse_themes(ctx: &mut Figtok, themes: Vec<serde_json::Value>) {
 			.collect();
 
 		// Get the theme name, and then add the list of enabled sets under the theme name to ctx.
-		ctx.add_theme(theme_name, enabled_sets);
+		ctx.themes.insert(theme_name, enabled_sets);
 	}
 }
 
@@ -35,7 +35,7 @@ pub fn parse_token_sets(ctx: &mut Figtok, token_sets: HashMap<String, HashMap<St
 		let mut prefix: Vec<String> = vec![];
 
 		// Insert a blank token set.
-		let _ = &ctx.add_token_set(slug.clone(), Vec::new());
+		let _ = &ctx.token_sets.insert(slug.clone(), Vec::new());
 
 		// Parse the token set
 		parse_token_set(ctx, &slug.to_string(), data, Some(&mut prefix));
@@ -77,7 +77,7 @@ fn parse_token_set(
 					v.push(token_id.clone());
 				});
 
-				ctx.add_token(token_id, token);
+				ctx.tokens.insert(token_id, token);
 			}
 			None => {
 				// If the "type" (`kind`) property is not present, we have a nested object
