@@ -1,4 +1,5 @@
 pub mod helpers;
+use helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
 
 use crate::Figtok;
 use colors_transform::{Color, Rgb};
@@ -7,8 +8,6 @@ use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use std::collections::HashMap;
-
-use self::helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
 
 #[derive(Clone, Copy)]
 pub enum ReplaceMethod {
