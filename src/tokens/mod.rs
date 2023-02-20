@@ -265,6 +265,7 @@ impl TokenDefinition<ShadowValue> {
         let mut value: Vec<String> = vec![];
 
         for layer in &self.value.0 {
+			let color = if !layer.color.starts_with("rgb") { format!("rgb({})", layer.color) } else { layer.color.clone() };
             match layer.kind {
                 ShadowLayerKind::DropShadow => value.push(format!(
                     "{}px {}px {}px {}px {}",
@@ -272,7 +273,7 @@ impl TokenDefinition<ShadowValue> {
 					layer.y, 
 					layer.blur,
 					layer.spread,
-					layer.color,
+					color
                 )),
                 ShadowLayerKind::InnerShadow => value.push(format!(
                     "inset {}px {}px {}px {}px {}",
@@ -280,7 +281,7 @@ impl TokenDefinition<ShadowValue> {
 					layer.y, 
 					layer.blur,
 					layer.spread,
-					layer.color,
+					color
                 )),
             };
         }
