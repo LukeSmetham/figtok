@@ -43,9 +43,10 @@ fn main() {
 
 	let (tokens, token_sets, themes) = load(&args.entry);
 
-	let figtok = Figtok::new(tokens, token_sets, themes, serializer, &args.output);
+	let figtok = Figtok::new(tokens, token_sets, themes, &args.output);
 
-    figtok.export();
+	serializer.serialize(&figtok);
+
 
     println!("Done! Check {} for the built files.", args.output);
 }

@@ -13,7 +13,7 @@ pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
 
 /// Stores a Regex to find valid CSS arithmetic expressions
 pub static REGEX_CALC: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)((\s+[+\-\*/]\s+(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?))*)?( )?$").unwrap()
+	Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)( )?$").unwrap()
 });
 
 pub fn css_stringify(s: &String) -> String {
@@ -34,7 +34,7 @@ pub fn css_stringify(s: &String) -> String {
 /// "value": "rgb(255, 0, 0)"
 /// "value": "0px 4px 24px 0px rgba(0, 0, 0, 16%)" 
 // 
-pub fn get_token_reference(ref_value: String, ctx: &Figtok, replace_method: super::ReplaceMethod) -> String {
+pub fn get_token_reference(ref_value: String, ctx: &Figtok, replace_method: super::ReplaceMethod, theme: &Option<String>) -> String {
     REGEX_HB
         .replace_all(&ref_value, |caps: &Captures| {
             // Get the reference (dot-notation) from the ref_value string without the surrounding curly brackets and use it to retrieve the referenced value.
@@ -45,8 +45,8 @@ pub fn get_token_reference(ref_value: String, ctx: &Figtok, replace_method: supe
 				ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
 				// Get the value of the referenced token, so we can replace the handlebar ref in the original ref_value string.
 				ReplaceMethod::StaticValues => {
-					if let Some(t) = ctx.tokens.values().find(|t| t.name() == name) {
-						t.value(ctx, replace_method, true)
+					if let Some(t) = ctx.get_tokens(theme).iter().find(|t| t.name() == name) {
+						t.value(ctx, replace_method, true, theme)
 					} else {
 						// No token with a matching name was found.
 						// ref_value.clone()

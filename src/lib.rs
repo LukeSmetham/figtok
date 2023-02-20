@@ -5,35 +5,35 @@ extern crate serde_json;
 extern crate once_cell;
 
 mod tokens;
-use tokens::{Tokens, TokenSets, Themes};
-
 pub mod load;
-
 pub mod serialize;
-use serialize::{Serializer};
+
+use tokens::{Tokens, TokenSets, Themes, Token};
 
 pub struct Figtok {
-    output_path: String,
+    pub output_path: String,
 
-	tokens: Tokens,
-    token_sets: TokenSets,
-    themes: Themes,
-
-    pub serializer: Box<dyn Serializer>,
+	pub tokens: Tokens,
+    pub token_sets: TokenSets,
+    pub themes: Themes,
 }
 
 impl Figtok {
-    pub fn new(tokens: Tokens, token_sets: TokenSets, themes: Themes, serializer: Box<dyn Serializer>, output_path: &String) -> Self {
+    pub fn new(tokens: Tokens, token_sets: TokenSets, themes: Themes, output_path: &String) -> Self {
 		Figtok {
 			output_path: output_path.clone(),
 			tokens,
             token_sets,
             themes,
-			serializer,
 		}
     }
 
-    pub fn export(&self) {
-        self.serializer.serialize(self);
+	pub fn get_tokens(&self, theme: &Option<String>) -> Vec<&Token> {
+		if let Some(key) = theme {
+			let active_sets = self.themes.get(key).unwrap();
+			active_sets.keys().map(|set_name| &self.token_sets[set_name]).flatten().map(|token_id| &self.tokens[token_id]).collect()
+		} else {
+			self.tokens.values().map(|t| t).collect::<Vec<&Token>>()
+		}
 	}
 }

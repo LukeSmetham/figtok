@@ -1,4 +1,4 @@
-use std::default::Default;
+use std::{default::Default, collections::HashMap};
 use std::fs;
 
 use crate::{
@@ -11,21 +11,12 @@ use super::Serializer;
 #[derive(Default)]
 pub struct CssSerializer {}
 impl Serializer for CssSerializer {
-    /// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
-    /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
-    /// can be imported individually by the user for more granularity, or if they don't use themes.
     fn serialize(&self, ctx: &Figtok) {
-        self.serialize_token_sets(ctx);
-
-        // Themes are not just collections of tokens, but collection of sets.
-        // We already output each set as a CSS file above, so all we need are
-        // @import statements.
-        //
-        // However, for more complex setups in the future,
-        // or for things like composition tokens, we may want a
-        // way to also write classes, or namespace variables
-        // via class name/id inside the themes root css file.
-        self.serialize_themes(ctx);
+		if !ctx.themes.is_empty() {
+			self.serialize_themes(ctx);
+		} else {
+			self.serialize_token_sets(ctx);
+		}
     }
 }
 impl CssSerializer {
@@ -42,7 +33,7 @@ impl CssSerializer {
 
             for id in token_set {
                 let token = &ctx.tokens[id];
-                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues);
+                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues, &None);
 
                 match token {
                     Token::Standard(_) | Token::Shadow(_) => {
@@ -70,16 +61,49 @@ impl CssSerializer {
     }
 
     fn serialize_themes(&self, ctx: &Figtok) {
-        // TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
         // Iterate over the themes and create import statements for each included set.
         for (name, sets) in &ctx.themes {
-            let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
+			let mut value = String::new();
+			let mut classes = String::new();
+			
+			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").collect::<HashMap<&String, &String>>();
+			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").collect::<HashMap<&String, &String>>();
 
-            let mut value = String::new();
+			for (set_name, _) in source_sets {
+				let token_set = &ctx.token_sets[set_name];
 
-            for name in set_names {
-                value.push_str(format!("@import \"./{}.css\";", &name).as_str());
-            }
+				for id in token_set {
+					let token = &ctx.tokens[id];
+					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+
+					match token {
+						Token::Standard(_) | Token::Shadow(_) => {
+							value.push_str(token_value);
+						}
+						Token::Composition(_) => {
+							classes.push_str(token_value);
+						}
+					}
+				}
+			}
+			
+			for (set_name, _) in enabled_sets {
+				let token_set = &ctx.token_sets[set_name];
+
+				for id in token_set {
+					let token = &ctx.tokens[id];
+					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+
+					match token {
+						Token::Standard(_) | Token::Shadow(_) => {
+							value.push_str(token_value);
+						}
+						Token::Composition(_) => {
+							classes.push_str(token_value);
+						}
+					}
+				}
+			}
 
             // Themes must be output to the top level so that the import paths work
             // we can probably work around this, if we want, as things improve.
@@ -87,7 +111,7 @@ impl CssSerializer {
 
             let _ = fs::write(
                 format!("{}/{}.css", ctx.output_path, name_parts.join("-")),
-                value,
+                format!(":root{{{}}} {}", value, classes),
             );
         }
     }

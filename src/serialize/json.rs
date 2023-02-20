@@ -7,6 +7,12 @@ use super::{
 	Serializer,
 };
 
+// ! For StaticValues there is an issue, currently with the CSS Variables approach you can include the CSS file for the theme you want to include,
+// ! and it will resolve to the correct variables to that theme i.e. background is different if your in the dark or light theme.
+// ! But resolving static values on "enabled" sets, we need to take into account which theme is being used. This means that for serializing JSON themes 
+// ! we need to create each "enabled" set (not "source" as these are truly static) multiple times (once for each theme that uses the set.)
+// ! i.e. dark-syntax-theme / light-syntax-theme / dark-theme / light-theme so that each time, we can make sure we only use the tokens from the correct sets.
+
 #[derive(Default)]
 pub struct JsonSerializer {}
 impl Serializer for JsonSerializer {
@@ -29,7 +35,7 @@ impl JsonSerializer {
 
 			for id in token_set {
 				let token = &ctx.tokens[id];
-				value = merge(&value, &token.to_json(ctx, ReplaceMethod::StaticValues)).unwrap();
+				value = merge(&value, &token.to_json(ctx, ReplaceMethod::StaticValues, &None)).unwrap();
 			}
 
 			// Now we make sure the output directory exists, and write the CSS file to disk

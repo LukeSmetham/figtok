@@ -83,7 +83,7 @@ impl ToString for TokenKind {
 /// The Token enum also has some "getter" functions that alias the shared properties between token types
 /// to give us an easy way to access inner values by a ref to an enum Token, and reduce the amount of match
 /// statements everywhere.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Standard(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
@@ -115,10 +115,10 @@ impl Token {
 	/// This is primarily used to access the value of a token, when we are expanding a token value that references another token.
 	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
 	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
-    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
         let mut value = match self {
-            Token::Standard(t) => t.get_value(ctx, replace_method, nested),
-            Token::Shadow(t) => t.get_value(ctx, replace_method),
+            Token::Standard(t) => t.get_value(ctx, replace_method, nested, theme),
+            Token::Shadow(t) => t.get_value(ctx, replace_method, theme),
 			// We never call value() on Composition tokens as it currently stands, instead we access the value directly to process the inner values of the composition token.
 			// Composition tokens also can't be referenced by other tokens, which means this arm never runs by the call to get_value finding a ref and recursively calling this fn.
             Token::Composition(_) => todo!(), 
@@ -135,13 +135,13 @@ impl Token {
     }
 
 	// Serialize the token to a valid CSS string. 
-    pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+    pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
 		match self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				format!(
 					"--{}: {};",
 					css_stringify(&self.name()),
-					self.value(ctx, replace_method, false)
+					self.value(ctx, replace_method, false, theme)
 				)
 			}
 			Token::Composition(t) => {
@@ -152,7 +152,7 @@ impl Token {
 				for (key, value) in t.value.as_object().unwrap() {
 					// Here we call get_token_reference directly as the inner values of a composition token are not tokens in their own right, 
 					//so don't already exist on ctx - but may still contain references to tokens.
-					let token_value = get_token_reference(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
+					let token_value = get_token_reference(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method, theme);
 					class.push_str(
 					format!(
 							"{}: {};", 
@@ -170,14 +170,14 @@ impl Token {
     }
 
 	// Serialize the token to a valid JSON string. 
-	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
+	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod, theme: &Option<String>) -> serde_json::Value {
 		match &self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				let token_name = self.name();
 				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
 				key_parts.reverse();
 
-				let value = self.value(ctx, replace_method, false);
+				let value = self.value(ctx, replace_method, false, theme);
 				
 				let mut j = json!(value);
 				for key in key_parts {
@@ -194,7 +194,7 @@ impl Token {
 				let mut properties: HashMap<String, String> = HashMap::new();
 
 				for (property_name, property_value) in t.value.as_object().unwrap() {
-					let inner_value = get_token_reference(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method);
+					let inner_value = get_token_reference(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method, &theme);
 					properties.insert(property_name.clone(), inner_value);
 				}
 
@@ -209,7 +209,7 @@ impl Token {
 	}
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound(deserialize = "T: DeserializeOwned"))]
 pub struct TokenDefinition<T> {
     /// The value from the original json file for this token. May be a static value, or a reference using handlebars syntax e.g. {color.purple.1}
@@ -225,11 +225,11 @@ pub struct TokenDefinition<T> {
 }
 impl TokenDefinition<String> {
 	// Follows references and returns a string value - this is super simple and applies to most tokens other than Composition, Typography and Shadow.
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
         // Check if the original_value contains handlebar syntax with a reference to another token.
         let value = if REGEX_HB.is_match(&self.value) {
 			// if so, follow the reference:
-			let mut v = get_token_reference(self.value.to_string(), ctx, replace_method);
+			let mut v = get_token_reference(self.value.to_string(), ctx, replace_method, &theme);
 			
 			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
 			// we must also insure we aren't nested so that values that are multiple refs deep don't
@@ -261,7 +261,7 @@ impl TokenDefinition<String> {
 impl TokenDefinition<ShadowValue> {
 	/// Shadow values can be expressed as a single string. Because of this it can take the Vec<ShadowLayer>
 	/// from serializing the JSON, and deref + concatenate it all together into a single css variable. 
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
+    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
         let mut value: Vec<String> = vec![];
 
         for layer in &self.value.0 {
@@ -285,14 +285,14 @@ impl TokenDefinition<ShadowValue> {
             };
         }
 
-        get_token_reference(value.join(", "), ctx, replace_method)
+        get_token_reference(value.join(", "), ctx, replace_method, &theme)
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShadowValue(pub Vec<ShadowLayer>);
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShadowLayer {
     color: String,
     #[serde(alias = "type")]
@@ -303,7 +303,7 @@ pub struct ShadowLayer {
     spread: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum ShadowLayerKind {
     #[serde(alias = "innerShadow")]
     InnerShadow,
