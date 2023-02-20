@@ -12,6 +12,7 @@ pub struct JsonSerializer {}
 impl Serializer for JsonSerializer {
 	fn serialize(&self, ctx: &Figtok) {
 		self.serialize_token_sets(ctx);
+		self.serialize_themes(ctx);
 
 		// TODO: Serialize Themes.
 		// Need to think of a way to serialize the themes as JSON as they are essentially just collections of sets, i.e. because we can't use references to other files in JSON
@@ -45,5 +46,18 @@ impl JsonSerializer {
 			// Write the json file.
             let _ = fs::write(format!("{}/{}.{}", ctx.output_path, set_name, "json"), value.to_string());
 		}
+	}
+
+	pub fn serialize_themes(&self, ctx: &Figtok) {
+        for (name, sets) in &ctx.themes {
+            // Themes must be output to the top level so that the import paths work
+            // we can probably work around this, if we want, as things improve.
+            let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
+
+            let _ = fs::write(
+                format!("{}/{}.json", ctx.output_path, name_parts.join("-")),
+                serde_json::to_value(sets).unwrap().to_string(),
+            );
+        }
 	}
 }
