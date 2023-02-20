@@ -4,6 +4,7 @@ use helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
 use crate::Figtok;
 use colors_transform::{Color, Rgb};
 use convert_case::{Case, Casing};
+use serde_json::json;
 use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 use std::collections::HashMap;
@@ -169,26 +170,44 @@ impl Token {
 		}
     }
 
-	// // Serialize the token to a valid JSON string. 
-	// pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
-	// 	match &self {
-	// 		Token::Standard(_) | Token::Shadow(_) => {
-	// 			let token_name = self.name();
-	// 			let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
-	// 			key_parts.reverse();
+	// Serialize the token to a valid JSON string. 
+	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
+		match &self {
+			Token::Standard(_) | Token::Shadow(_) => {
+				let token_name = self.name();
+				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
+				key_parts.reverse();
 
-	// 			let value = self.value(ctx, replace_method, false);
+				let value = self.value(ctx, replace_method, false);
 				
-	// 			let mut j = json!(value);
-	// 			for key in key_parts {
-	// 				j = json!({ key: j })
-	// 			};
+				let mut j = json!(value);
+				for key in key_parts {
+					j = json!({ key: j })
+				};
 
-	// 			j
-	// 		}
-	// 		_ => json!({"": ""})
-	// 	}
-	// }
+				j
+			}
+			Token::Composition(t) => {
+				let token_name = self.name();
+				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
+				key_parts.reverse();
+
+				let mut properties: HashMap<String, String> = HashMap::new();
+
+				for (key, value) in t.value.as_object().unwrap() {
+					let inner_value = deref_token_value(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
+					properties.insert(key.clone(), inner_value);
+				}
+
+				let mut j = serde_json::to_value(properties).unwrap();
+				for key in key_parts {
+					j = json!({ key: j })
+				}
+
+				j
+			}
+		}
+	}
 }
 
 #[derive(Serialize, Deserialize, Debug)]

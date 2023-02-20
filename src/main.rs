@@ -1,4 +1,4 @@
-use figtok::{Figtok, load::load, serialize::{Serializer, CssSerializer}};
+use figtok::{Figtok, load::load, serialize::{Serializer, CssSerializer, JsonSerializer}};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -24,7 +24,7 @@ fn main() {
 
 	let serializer: Box<dyn Serializer> = match args.format.as_str() {
 		"css" => Box::new(CssSerializer::new()),
-		// "json" => Box::new(JsonSerializer::new()),
+		"json" => Box::new(JsonSerializer::new()),
 		f => panic!("Unsupported output format {}", f)
 	};
 
