@@ -49,14 +49,19 @@ impl CssSerializer {
 
             // Split the set name by any /'s in case they are nested but remove the
             // last portion as this will be the file name not a directory
-            let dir = match set_name.rsplit_once("/") {
-                Some((d, _)) => d,
-                None => "",
-            };
+            let dir = if let Some((d, _)) = set_name.rsplit_once("/") {
+                d
+            } else {
+				""
+			};
+
             // Ensure the directories we need exist for token sets
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
             // Write the css file.
-            let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), format!(":root{{{}}} {}", value, classes));
+            let _ = fs::write(
+				format!("{}.css", [ctx.output_path.to_string(), set_name.to_string()].join("/")), 
+				format!(":root{{{}}}\n{}", value, classes)
+			);
         }
     }
 
@@ -66,10 +71,10 @@ impl CssSerializer {
 			let mut value = String::new();
 			let mut classes = String::new();
 			
-			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").collect::<HashMap<&String, &String>>();
-			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").collect::<HashMap<&String, &String>>();
+			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").map(|(k, _)| k).collect::<Vec<&String>>();
+			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").map(|(k, _)| k).collect::<Vec<&String>>();
 
-			for (set_name, _) in source_sets {
+			for set_name in source_sets {
 				let token_set = &ctx.token_sets[set_name];
 
 				for id in token_set {
@@ -87,7 +92,7 @@ impl CssSerializer {
 				}
 			}
 			
-			for (set_name, _) in enabled_sets {
+			for set_name in enabled_sets {
 				let token_set = &ctx.token_sets[set_name];
 
 				for id in token_set {
@@ -110,8 +115,8 @@ impl CssSerializer {
             let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
 
             let _ = fs::write(
-                format!("{}/{}.css", ctx.output_path, name_parts.join("-")),
-                format!(":root{{{}}} {}", value, classes),
+                format!("{}.css", [ctx.output_path.to_string(), name_parts.join("-")].join("/")),
+                format!(":root{{{}}}\n{}", value, classes),
             );
         }
     }
