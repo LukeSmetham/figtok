@@ -99,8 +99,8 @@ fn parse_token_set(
 				// println!("{} / {}[{}]", set_name, token.name(), token.id());
 				tokens.push(token);
 			}
+			// If the "type" (`kind`) property is not present, we have a nested token set
 			None => {
-				// If the "type" (`kind`) property is not present, we have a nested set
 				let nested_data: HashMap<String, serde_json::Value> = serde_json::from_value(value).unwrap();
 				// We pass a clone of the id array along as the prefix for all proceeding tokens.
 				for token in parse_token_set(set_name, nested_data, Some(&mut id.clone())) {
