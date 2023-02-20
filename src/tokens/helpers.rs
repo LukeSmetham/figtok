@@ -1,6 +1,10 @@
 use once_cell::sync::Lazy;
 
-use regex::{Regex};
+use regex::{Regex, Captures};
+use convert_case::{Case, Casing};
+
+use crate::Figtok;
+use super::{ReplaceMethod};
 
 /// Stores a Regex to find handlebars syntax ( i.e. {variable.property} )
 pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
@@ -9,8 +13,50 @@ pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
 
 /// Stores a Regex to find valid CSS arithmetic expressions
 pub static REGEX_CALC: Lazy<Regex> = Lazy::new(|| {
-	Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)( )?$").unwrap()
+    Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)((\s+[+\-\*/]\s+(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?))*)?( )?$").unwrap()
 });
+
+pub fn css_stringify(s: &String) -> String {
+	s.replace(".", "-").to_case(Case::Kebab)
+}
+
+/// Depending on the provided replace_method, this function will either return a css variable string that points to a token elsewhere in the system,
+/// or deeply follow the reference itself by searching existing tokens in ctx.tokens for a name that matches, and returning the unfurled value.
+/// Lots of tokens have contain references to other tokens e.g. 
+/// "value": "{ref.color.red}"
+/// "value": "0px 4px 24px 0px rgba({theme.shadow}, 16%)"
+/// 
+/// if the provided replace_method is CssVariables, we would get this:
+/// "value": "rgb(var(--ref-color-red))"
+/// "value": "0px 4px 24px 0px rgba(var(--ref-theme-shadow), 16%)" 
+/// 
+/// if the replace_method is StaticValues we would get
+/// "value": "rgb(255, 0, 0)"
+/// "value": "0px 4px 24px 0px rgba(0, 0, 0, 16%)" 
+// 
+pub fn get_token_reference(ref_value: String, ctx: &Figtok, replace_method: super::ReplaceMethod) -> String {
+    REGEX_HB
+        .replace_all(&ref_value, |caps: &Captures| {
+            // Get the reference (dot-notation) from the ref_value string without the surrounding curly brackets and use it to retrieve the referenced value.
+            let name = &caps[1];
+
+			match replace_method {
+				// Convert the name of the token referenced in the ref_value string into a CSS var statement so CSS itself can handle the reference.
+				ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
+				// Get the value of the referenced token, so we can replace the handlebar ref in the original ref_value string.
+				ReplaceMethod::StaticValues => {
+					if let Some(t) = ctx.tokens.values().find(|t| t.name() == name) {
+						t.value(ctx, replace_method, true)
+					} else {
+						// No token with a matching name was found.
+						// ref_value.clone()
+						String::from("BROKEN_REF")
+					}
+				}
+			}
+        })
+        .to_string()
+}
 
 #[cfg(test)]
 mod test {
@@ -69,6 +115,9 @@ mod test {
 			"10px - var(--width)",
 			"var(--width) * 10px",
 			"10px / var(--width)",
+			"5 + 10 + 15",
+			"10 - 5 - 5",
+			"10 / 5 / 5",
 		];
 
 		for current in test_strings {
@@ -80,13 +129,7 @@ mod test {
 	fn reject_invalid_calc_statements() {
 		let test_strings = vec![
 			"5.5+10.5",
-			"5-72",
-			"12/11",
-			"100*6",
-			"5 + 10 + 15",
-			"10 - 5 - 5", // multiple operations like this should probably be supported? (Check CSS Spec.) https://css-tricks.com/a-complete-guide-to-calc-in-css/
 			"5 *",
-			"10 / 5 / 5",
 			"5.5 +",
 			"foo + 10",
 			"10 - bar",
