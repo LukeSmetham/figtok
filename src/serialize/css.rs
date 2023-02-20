@@ -11,21 +11,12 @@ use super::Serializer;
 #[derive(Default)]
 pub struct CssSerializer {}
 impl Serializer for CssSerializer {
-    /// Iterate over all token sets and themes, creating CSS files for each with valid references to each other.
-    /// Themes import the relevant sets individually, and Token Sets are outputted to their own CSS files that
-    /// can be imported individually by the user for more granularity, or if they don't use themes.
     fn serialize(&self, ctx: &Figtok) {
-        self.serialize_token_sets(ctx);
-
-        // Themes are not just collections of tokens, but collection of sets.
-        // We already output each set as a CSS file above, so all we need are
-        // @import statements.
-        //
-        // However, for more complex setups in the future,
-        // or for things like composition tokens, we may want a
-        // way to also write classes, or namespace variables
-        // via class name/id inside the themes root css file.
-        self.serialize_themes(ctx);
+		if !ctx.themes.is_empty() {
+			self.serialize_themes(ctx);
+		} else {
+			self.serialize_token_sets(ctx);
+		}
     }
 }
 impl CssSerializer {
@@ -42,7 +33,7 @@ impl CssSerializer {
 
             for id in token_set {
                 let token = &ctx.tokens[id];
-                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues);
+                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues, &None);
 
                 match token {
                     Token::Standard(_) | Token::Shadow(_) => {
@@ -58,36 +49,74 @@ impl CssSerializer {
 
             // Split the set name by any /'s in case they are nested but remove the
             // last portion as this will be the file name not a directory
-            let dir = match set_name.rsplit_once("/") {
-                Some((d, _)) => d,
-                None => "",
-            };
+            let dir = if let Some((d, _)) = set_name.rsplit_once("/") {
+                d
+            } else {
+				""
+			};
+
             // Ensure the directories we need exist for token sets
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
             // Write the css file.
-            let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), format!(":root{{{}}} {}", value, classes));
+            let _ = fs::write(
+				format!("{}.css", [ctx.output_path.to_string(), set_name.to_string()].join("/")), 
+				format!(":root{{{}}}\n{}", value, classes)
+			);
         }
     }
 
     fn serialize_themes(&self, ctx: &Figtok) {
-        // TODO: Here consider keeping a map of slug to relative path for each set so we can use it to build the @import statements regardless of where the files end up.
         // Iterate over the themes and create import statements for each included set.
         for (name, sets) in &ctx.themes {
-            let set_names: Vec<String> = sets.keys().into_iter().map(|key| key.clone()).collect();
+			let mut value = String::new();
+			let mut classes = String::new();
+			
+			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").map(|(k, _)| k).collect::<Vec<&String>>();
+			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").map(|(k, _)| k).collect::<Vec<&String>>();
 
-            let mut value = String::new();
+			for set_name in source_sets {
+				let token_set = &ctx.token_sets[set_name];
 
-            for name in set_names {
-                value.push_str(format!("@import \"./{}.css\";", &name).as_str());
-            }
+				for id in token_set {
+					let token = &ctx.tokens[id];
+					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+
+					match token {
+						Token::Standard(_) | Token::Shadow(_) => {
+							value.push_str(token_value);
+						}
+						Token::Composition(_) => {
+							classes.push_str(token_value);
+						}
+					}
+				}
+			}
+			
+			for set_name in enabled_sets {
+				let token_set = &ctx.token_sets[set_name];
+
+				for id in token_set {
+					let token = &ctx.tokens[id];
+					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+
+					match token {
+						Token::Standard(_) | Token::Shadow(_) => {
+							value.push_str(token_value);
+						}
+						Token::Composition(_) => {
+							classes.push_str(token_value);
+						}
+					}
+				}
+			}
 
             // Themes must be output to the top level so that the import paths work
             // we can probably work around this, if we want, as things improve.
             let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
 
             let _ = fs::write(
-                format!("{}/{}.css", ctx.output_path, name_parts.join("-")),
-                value,
+                format!("{}.css", [ctx.output_path.to_string(), name_parts.join("-")].join("/")),
+                format!(":root{{{}}}\n{}", value, classes),
             );
         }
     }
