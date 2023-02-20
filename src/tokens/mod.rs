@@ -194,9 +194,9 @@ impl Token {
 
 				let mut properties: HashMap<String, String> = HashMap::new();
 
-				for (key, value) in t.value.as_object().unwrap() {
-					let inner_value = deref_token_value(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
-					properties.insert(key.clone(), inner_value);
+				for (property_name, property_value) in t.value.as_object().unwrap() {
+					let inner_value = deref_token_value(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method);
+					properties.insert(property_name.clone(), inner_value);
 				}
 
 				let mut j = serde_json::to_value(properties).unwrap();
