@@ -1,5 +1,5 @@
 pub mod helpers;
-use helpers::{css_stringify, deref_token_value, REGEX_CALC, REGEX_HB};
+use helpers::{css_stringify, get_token_reference, REGEX_CALC, REGEX_HB};
 
 use crate::Figtok;
 use colors_transform::{Color, Rgb};
@@ -116,7 +116,6 @@ impl Token {
 	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
 	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
-		println!("{:?}", &self);
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
@@ -151,9 +150,9 @@ impl Token {
 				class.push_str(format!(".{} {{", css_stringify(&t.name)).as_str());
 
 				for (key, value) in t.value.as_object().unwrap() {
-					// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
+					// Here we call get_token_reference directly as the inner values of a composition token are not tokens in their own right, 
 					//so don't already exist on ctx - but may still contain references to tokens.
-					let token_value = deref_token_value(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
+					let token_value = get_token_reference(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
 					class.push_str(
 					format!(
 							"{}: {};", 
@@ -195,7 +194,7 @@ impl Token {
 				let mut properties: HashMap<String, String> = HashMap::new();
 
 				for (property_name, property_value) in t.value.as_object().unwrap() {
-					let inner_value = deref_token_value(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method);
+					let inner_value = get_token_reference(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method);
 					properties.insert(property_name.clone(), inner_value);
 				}
 
@@ -230,7 +229,7 @@ impl TokenDefinition<String> {
         // Check if the original_value contains handlebar syntax with a reference to another token.
         let value = if REGEX_HB.is_match(&self.value) {
 			// if so, follow the reference:
-			let mut v = deref_token_value(self.value.to_string(), ctx, replace_method);
+			let mut v = get_token_reference(self.value.to_string(), ctx, replace_method);
 			
 			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
 			// we must also insure we aren't nested so that values that are multiple refs deep don't
@@ -286,7 +285,7 @@ impl TokenDefinition<ShadowValue> {
             };
         }
 
-        deref_token_value(value.join(", "), ctx, replace_method)
+        get_token_reference(value.join(", "), ctx, replace_method)
     }
 }
 
