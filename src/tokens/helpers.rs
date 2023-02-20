@@ -13,7 +13,7 @@ pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
 
 /// Stores a Regex to find valid CSS arithmetic expressions
 pub static REGEX_CALC: Lazy<Regex> = Lazy::new(|| {
-	Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)( )?$").unwrap()
+    Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)((\s+[+\-\*/]\s+(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?))*)?( )?$").unwrap()
 });
 
 pub fn css_stringify(s: &String) -> String {
@@ -115,6 +115,9 @@ mod test {
 			"10px - var(--width)",
 			"var(--width) * 10px",
 			"10px / var(--width)",
+			"5 + 10 + 15",
+			"10 - 5 - 5",
+			"10 / 5 / 5",
 		];
 
 		for current in test_strings {
@@ -126,13 +129,7 @@ mod test {
 	fn reject_invalid_calc_statements() {
 		let test_strings = vec![
 			"5.5+10.5",
-			"5-72",
-			"12/11",
-			"100*6",
-			"5 + 10 + 15",
-			"10 - 5 - 5", // multiple operations like this should probably be supported? (Check CSS Spec.) https://css-tricks.com/a-complete-guide-to-calc-in-css/
 			"5 *",
-			"10 / 5 / 5",
 			"5.5 +",
 			"foo + 10",
 			"10 - bar",
