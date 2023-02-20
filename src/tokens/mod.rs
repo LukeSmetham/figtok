@@ -6,7 +6,6 @@ use colors_transform::{Color, Rgb};
 use convert_case::{Case, Casing};
 use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
-use serde_json::json;
 use std::collections::HashMap;
 
 #[derive(Clone, Copy)]
@@ -83,6 +82,7 @@ impl ToString for TokenKind {
 /// The Token enum also has some "getter" functions that alias the shared properties between token types
 /// to give us an easy way to access inner values by a ref to an enum Token, and reduce the amount of match
 /// statements everywhere.
+#[derive(Debug)]
 pub enum Token {
     Standard(TokenDefinition<String>),
     Composition(TokenDefinition<serde_json::Value>),
@@ -110,11 +110,18 @@ impl Token {
 	/// Get the token value. This method calls the get_value() method of a TokenDefinition<T>, we can impl a different 
 	/// get_value for each possible value of T that we want to support, ultimately producing a string containing the value
 	/// of the token.
+	/// 
+	/// This is primarily used to access the value of a token, when we are expanding a token value that references another token.
+	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
+	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
     pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool) -> String {
+		println!("{:?}", &self);
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested),
             Token::Shadow(t) => t.get_value(ctx, replace_method),
-            Token::Composition(t) => t.get_value(ctx, replace_method),
+			// We never call value() on Composition tokens as it currently stands, instead we access the value directly to process the inner values of the composition token.
+			// Composition tokens also can't be referenced by other tokens, which means this arm never runs by the call to get_value finding a ref and recursively calling this fn.
+            Token::Composition(_) => todo!(), 
         };
 
 		// We check a regex for a css arithmetic expression and if we have a match,
@@ -137,30 +144,51 @@ impl Token {
 					self.value(ctx, replace_method, false)
 				)
 			}
-			Token::Composition(_) => self.value(ctx, replace_method, false),
+			Token::Composition(t) => {
+				let mut class = String::new();
+
+				class.push_str(format!(".{} {{", css_stringify(&t.name)).as_str());
+
+				for (key, value) in t.value.as_object().unwrap() {
+					// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
+					//so don't already exist on ctx - but may still contain references to tokens.
+					let token_value = deref_token_value(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method);
+					class.push_str(
+					format!(
+							"{}: {};", 
+							key.replace(".", "-").to_case(Case::Kebab),
+							token_value
+						).as_str()
+					);
+				};
+
+				class.push_str("}");
+
+				class
+			},
 		}
     }
 
-	// Serialize the token to a valid JSON string. 
-	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
-		match &self {
-			Token::Standard(_) | Token::Shadow(_) => {
-				let token_name = self.name();
-				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
-				key_parts.reverse();
+	// // Serialize the token to a valid JSON string. 
+	// pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> serde_json::Value {
+	// 	match &self {
+	// 		Token::Standard(_) | Token::Shadow(_) => {
+	// 			let token_name = self.name();
+	// 			let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
+	// 			key_parts.reverse();
 
-				let value = self.value(ctx, replace_method, false);
+	// 			let value = self.value(ctx, replace_method, false);
 				
-				let mut j = json!(value);
-				for key in key_parts {
-					j = json!({ key: j })
-				};
+	// 			let mut j = json!(value);
+	// 			for key in key_parts {
+	// 				j = json!({ key: j })
+	// 			};
 
-				j
-			}
-			_ => json!({"": ""})
-		}
-	}
+	// 			j
+	// 		}
+	// 		_ => json!({"": ""})
+	// 	}
+	// }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -203,42 +231,13 @@ impl TokenDefinition<String> {
 						rgb.get_green(),
 						rgb.get_blue()
 					)
-			}else {
+			} else {
 				// If there is no handlebar reference in the value, just return the value as is.
 				self.value.clone()
 			}
         };
 
         value
-    }
-}
-
-impl TokenDefinition<serde_json::Value> {
-	/// For composition tokens, it constructs a css class containing all of the inner values so they can be applied at once.
-	/// Figtok also treats Typography tokens as composition tokens after the parse step.
-	/// 
-	/// We can then write these to css separately from the variables.
-    pub fn get_value(&self, ctx: &Figtok, replace_method: ReplaceMethod) -> String {
-       	let mut class = String::new();
-
-		class.push_str(format!(".{} {{", css_stringify(&self.name)).as_str());
-
-		for (key, value) in self.value.as_object().unwrap() {
-			// Here we call deref_token_value directly as the inner values of a composition token are not tokens in their own right, 
-			//so don't already exist on ctx - but may still contain references to tokens.
-			let token_value = deref_token_value(value.as_str().unwrap().to_string(), ctx, replace_method);
-			class.push_str(
-			format!(
-					"{}: {};", 
-					key.replace(".", "-").to_case(Case::Kebab),
-					token_value
-				).as_str()
-			);
-		};
-
-		class.push_str("}");
-
-		class
     }
 }
 impl TokenDefinition<ShadowValue> {

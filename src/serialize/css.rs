@@ -40,12 +40,9 @@ impl CssSerializer {
             let mut value = String::new();
             let mut classes = String::new();
 
-            // add the opening line
-            value.push_str(":root{");
-
             for id in token_set {
                 let token = &ctx.tokens[id];
-                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables);
+                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues);
 
                 match token {
                     Token::Standard(_) | Token::Shadow(_) => {
@@ -56,12 +53,6 @@ impl CssSerializer {
                     }
                 }
             }
-
-            // add the final curly bracket
-            value.push_str("}");
-
-            // Add the classes to the end of the value str.
-            value.push_str(classes.as_str());
 
 			// Write to the output dir 
 
@@ -74,7 +65,7 @@ impl CssSerializer {
             // Ensure the directories we need exist for token sets
             fs::create_dir_all(vec![ctx.output_path.clone(), dir.to_string()].join("/")).unwrap();
             // Write the css file.
-            let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), value);
+            let _ = fs::write(format!("{}/{}.css", ctx.output_path, set_name), format!(":root{{{}}} {}", value, classes));
         }
     }
 

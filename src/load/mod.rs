@@ -2,13 +2,13 @@ use std::collections::HashMap;
 use std::path::Path;
 
 mod parse;
-use parse::{parse_themes, parse_token_sets};
+use parse::{parse_themes, parse_tokens};
 
 mod utils;
 use serde_json::Value;
 use utils::read_file;
 
-use crate::Figtok;
+use crate::tokens::{TokenSets, Themes, Tokens};
 
 /// Figma Token Studio gives us two options, either one big JSON file with all the tokens in,
 /// or multiple JSON files within a directory.
@@ -19,20 +19,27 @@ enum FileMode {
 }
 
 /// Loads all the tokens from the input directory into memory.
-pub fn load(ctx: &mut Figtok) {
-    let mode = get_file_mode(&ctx.entry_path);
+pub fn load(entry_path: &String) -> (Tokens, TokenSets, Themes) {
+    let mode = get_file_mode(&entry_path);
 
     // Load in the raw data using serde, either from a single json file, or by traversing
     // all json files in the directory (entry_path)
-    // We can then pass these values to parse_token_sets and parse_themes respectively to
-    // consume the data and create Tokens, TokenSets and Themes.
-    let (token_sets, themes) = match mode {
-        FileMode::SingleFile => load_from_file(&ctx.entry_path),
-        FileMode::MultiFile => load_from_dir(&ctx.entry_path),
+    //
+	// All tokens are provided within their sets - from loading the JSON files with serde we get
+	// token_sets_source, provided as a HashMap where the key is the token set name, and the value
+	// is a HashMap<String, serde_json::Value> containing the contents of the file.
+	//
+	// We also get themes_source, a Vec of serde_json::Value's containing each theme definition from the
+	// $themes file
+    let (source_token_sets, source_themes) = match mode {
+        FileMode::SingleFile => load_from_file(&entry_path),
+        FileMode::MultiFile => load_from_dir(&entry_path),
     };
 
-    parse_token_sets(ctx, token_sets);
-    parse_themes(ctx, themes);
+    let (tokens, token_sets) = parse_tokens(source_token_sets);
+    let themes = parse_themes(source_themes);
+
+	(tokens, token_sets, themes)
 }
 
 fn load_from_file(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>) {

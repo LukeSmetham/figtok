@@ -8,17 +8,11 @@ mod tokens;
 use tokens::{Tokens, TokenSets, Themes};
 
 pub mod load;
-use load::load;
 
 pub mod serialize;
-use serialize::{Serializer, CssSerializer, JsonSerializer};
-
-use std::{collections::HashMap};
-use std::fs;
-use std::path::Path;
+use serialize::{Serializer};
 
 pub struct Figtok {
-    entry_path: String,
     output_path: String,
 
 	tokens: Tokens,
@@ -29,38 +23,14 @@ pub struct Figtok {
 }
 
 impl Figtok {
-    pub fn new(format: &String, entry_path: &String, output_path: &String) -> Self {
-		let serializer: Box<dyn Serializer> = match format.as_str() {
-			"css" => Box::new(CssSerializer::new()),
-			"json" => Box::new(JsonSerializer::new()),
-			f => panic!("Unsupported output format {}", f)
-		};
-
-		let mut figtok = Figtok {
-			entry_path: entry_path.clone(),
+    pub fn new(tokens: Tokens, token_sets: TokenSets, themes: Themes, serializer: Box<dyn Serializer>, output_path: &String) -> Self {
+		Figtok {
 			output_path: output_path.clone(),
-			tokens: HashMap::new(),
-            token_sets: HashMap::new(),
-            themes: HashMap::new(),
+			tokens,
+            token_sets,
+            themes,
 			serializer,
-		};
-
-		// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
-        if Path::new(&figtok.output_path).is_dir() {
-            fs::remove_dir_all(&figtok.output_path).unwrap();
-        }
-
-        // Now ensure the output_path dir exists.
-        fs::create_dir_all(&figtok.output_path).unwrap();
-
-        // Check if the input directory exists
-        if !Path::new(&figtok.entry_path).exists() {
-            panic!("No {} directory found, passed as input directory", figtok.entry_path);
-        };
-
-		load(&mut figtok);
-
-		figtok
+		}
     }
 
     pub fn export(&self) {

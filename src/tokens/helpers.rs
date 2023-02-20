@@ -24,19 +24,22 @@ pub fn deref_token_value(input: String, ctx: &Figtok, replace_method: super::Rep
     REGEX_HB
         .replace_all(&input, |caps: &Captures| {
             // Get the reference (dot-notation) from the input string without the surrounding curly brackets and use it to retrieve the referenced value.
-            let ref_name = &caps[1];
+            let name = &caps[1];
 
-            // Find the referenced token
-            if let Some(t) = ctx.tokens.values().find(|t| t.name() == ref_name) {
-				// Get the value of the referenced token.
-				let replacement = match replace_method {
-                    ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&t.name())),
-                    ReplaceMethod::StaticValues => t.value(ctx, replace_method, true)
-                };
-                REGEX_HB.replace(&caps[0], replacement).to_string()
-            } else {
-				input.clone()
-            }
+			match replace_method {
+				// Convert the name of the token referenced in the input string into a CSS var statement so CSS itself can handle the reference.
+				ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
+				// Get the value of the referenced token, so we can replace the handlebar ref in the original input string.
+				ReplaceMethod::StaticValues => {
+					if let Some(t) = ctx.tokens.values().find(|t| t.name() == name) {
+						t.value(ctx, replace_method, true)
+					} else {
+						// No token with a matching name was found.
+						// input.clone()
+						String::from("BROKEN_REF")
+					}
+				}
+			}
         })
         .to_string()
 }
