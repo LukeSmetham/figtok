@@ -1,6 +1,7 @@
-use serde_derive::{Deserialize, Serialize};
+use serde_derive::{Deserialize};
+use serde::{Serialize, Serializer};
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
+#[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
     BorderRadius,
@@ -57,4 +58,12 @@ impl ToString for TokenKind {
         }
         .to_string()
     }
+}
+impl Serialize for TokenKind {
+	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+	where
+		S: Serializer,
+	{
+		serializer.serialize_str(&self.to_string())
+	}
 }
