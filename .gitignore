@@ -1,6 +1,7 @@
 # Generic
 .DS_Store
 packages/**/target
+target/
 
 # Core
 packages/core/tokens
