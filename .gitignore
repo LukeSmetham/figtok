@@ -1,5 +1,7 @@
-/target
-/build
-/tokens
-
+# Generic
 .DS_Store
+packages/**/target
+
+# Core
+packages/core/tokens
+packages/core/build
