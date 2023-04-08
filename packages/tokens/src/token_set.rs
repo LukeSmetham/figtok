@@ -20,8 +20,7 @@ impl TokenSet {
 
 		for id in &self.0 {
 			let token = store.token(id);
-			// TODO: Should rename to_css to serialize too...
-			let token_value = &token.to_css(store, ReplaceMethod::CssVariables, theme);
+			let token_value = &token.serialize(store, ReplaceMethod::CssVariables, theme);
 
 			match token {
 				Token::Standard(_) | Token::Shadow(_) => {

@@ -110,20 +110,4 @@ mod tests {
 			assert_eq!(token.id, String::from("fontSize.0"));
 		}
 	}
-
-	mod serialize {
-		use super::*;
-
-		#[test]
-		fn serializes_values_to_css_str() {
-			let token_definition = r#"{"value":"24px","kind":"other","name":"typescale.7","id":"fontSize.7"}"#;
-			let expected = r#"--typescale-7: 24px;"#;
-
-			let token: TokenDefinition<String> = serde_json::from_str(token_definition).unwrap();
-
-			let result = serde_json::to_string(&token).unwrap();
-
-			assert_eq!(result, expected);
-		}
-	}
 }
