@@ -4,7 +4,6 @@ extern crate serde_json;
 
 extern crate once_cell;
 
-mod tokens;
 pub mod load;
 pub mod serialize;
 

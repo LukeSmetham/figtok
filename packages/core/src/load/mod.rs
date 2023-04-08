@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 use std::path::Path;
+use serde_json::Value;
+use tokens::{TokenSets, Themes, Tokens};
 
 mod parse;
 use parse::{parse_themes, parse_tokens};
 
 mod utils;
-use serde_json::Value;
 use utils::read_file;
-
-use crate::tokens::{TokenSets, Themes, Tokens};
 
 /// Figma Token Studio gives us two options, either one big JSON file with all the tokens in,
 /// or multiple JSON files within a directory.

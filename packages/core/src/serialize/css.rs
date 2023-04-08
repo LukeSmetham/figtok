@@ -1,10 +1,8 @@
 use std::default::Default;
 use std::fs;
+use tokens::{ReplaceMethod, Token};
 
-use crate::{
-    tokens::{ReplaceMethod, Token},
-    Figtok,
-};
+use crate::Figtok;
 
 use super::Serializer;
 

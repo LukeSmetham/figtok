@@ -1,7 +1,7 @@
 use std::collections::{HashMap};
 use serde::de::DeserializeOwned;
+use tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes};
 
-use crate::tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes};
 
 pub fn parse_themes(source: Vec<serde_json::Value>) -> Themes {
 	let mut themes: Themes = HashMap::new();

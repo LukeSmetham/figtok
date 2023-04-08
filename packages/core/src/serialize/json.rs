@@ -1,7 +1,8 @@
 use std::{default::Default, fs};
 use merge_struct::merge;
 
-use crate::{Figtok, tokens::ReplaceMethod};
+use crate::Figtok;
+use tokens::ReplaceMethod;
 
 use super::{
 	Serializer,
