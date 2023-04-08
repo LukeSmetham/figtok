@@ -1,3 +1,5 @@
+mod log;
+
 use figtok::{Figtok, load::load};
 use clap::Parser;
 use std::fs;
@@ -49,5 +51,5 @@ fn main() {
 		panic!("Something went wrong: {}", e)
 	}
 
-	println!("Done! Check {} for the built files.", args.output);
+	log!("Done! Check {} for the built files.", figtok.output_path);
 }

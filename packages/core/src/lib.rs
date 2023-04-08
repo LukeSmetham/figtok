@@ -4,6 +4,7 @@ extern crate serde_json;
 
 pub mod load;
 pub mod serialize;
+mod log;
 
 use std::fs;
 use std::error::Error;
@@ -39,7 +40,11 @@ impl Figtok {
 
 	pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
 		if !self.themes.is_empty() {
+			log!("Detected {} themes...", self.themes.len());
+
 			for (name, sets) in &self.themes {
+				log!("Generating Theme: {}", name);
+
 				let mut variables = String::new();
 				let mut classes = String::new();
 
@@ -72,7 +77,10 @@ impl Figtok {
 				);
 			}
 		} else {
+			log!("Detected {} token sets...", self.token_sets.len());
 			for (set_name, token_set) in &self.token_sets {
+				log!("Generating Token Set: {}", set_name);
+
 				let mut variables = String::new();
 				let mut classes = String::new();
 

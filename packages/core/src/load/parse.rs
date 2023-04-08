@@ -49,7 +49,7 @@ pub fn parse_tokens(source: HashMap<String, HashMap<String, serde_json::Value>>)
 		let mut prefix: Vec<String> = vec![];
 
 		let set_tokens = parse_token_set(&set_name, token_set, Some(&mut prefix));
-		
+
 		// Create the token set itself as an empty vec in the token_sets HashMap.
 		token_sets.insert(
 			slug.clone(), 

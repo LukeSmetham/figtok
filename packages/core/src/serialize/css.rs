@@ -31,7 +31,7 @@ impl CssSerializer {
 
             for id in token_set {
                 let token = &ctx.tokens[id];
-                let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::StaticValues, &None);
+                let token_value = &ctx.tokens[id].serialize(ctx, ReplaceMethod::StaticValues, &None);
 
                 match token {
                     Token::Standard(_) | Token::Shadow(_) => {
@@ -77,7 +77,7 @@ impl CssSerializer {
 
 				for id in token_set {
 					let token = &ctx.tokens[id];
-					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+					let token_value = &ctx.tokens[id].serialize(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
 
 					match token {
 						Token::Standard(_) | Token::Shadow(_) => {
@@ -95,7 +95,7 @@ impl CssSerializer {
 
 				for id in token_set {
 					let token = &ctx.tokens[id];
-					let token_value = &ctx.tokens[id].to_css(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
+					let token_value = &ctx.tokens[id].serialize(ctx, ReplaceMethod::CssVariables, &Some(name.clone()));
 
 					match token {
 						Token::Standard(_) | Token::Shadow(_) => {
