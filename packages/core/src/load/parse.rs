@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use serde::de::DeserializeOwned;
-use tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes};
+use tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes, TokenSet};
 
 
 pub fn parse_themes(source: Vec<serde_json::Value>) -> Themes {
@@ -37,9 +37,6 @@ pub fn parse_tokens(source: HashMap<String, HashMap<String, serde_json::Value>>)
 	// serde_json::Values to create all of the tokens individually, adding them to the `tokens` map
 	// and storing their ID in the previously created `token_sets` entry. 
 	for (slug, token_set) in source {
-		// Create the token set itself as an empty vec in the token_sets HashMap.
-		token_sets.insert(slug.clone(), Vec::new());
-
 		// Take the "slug" and change from slash-separated to dot-separated "selector" syntax so we can
 		// use it to help construct the token ids parse_token_set.
 		let set_name = slug.split("/").collect::<Vec<&str>>().join(".");
@@ -52,12 +49,18 @@ pub fn parse_tokens(source: HashMap<String, HashMap<String, serde_json::Value>>)
 		let mut prefix: Vec<String> = vec![];
 
 		let set_tokens = parse_token_set(&set_name, token_set, Some(&mut prefix));
+		
+		// Create the token set itself as an empty vec in the token_sets HashMap.
+		token_sets.insert(
+			slug.clone(), 
+			TokenSet::new(Vec::with_capacity(set_tokens.len()))
+		);
 
 		// All tokens for the set are return in a Vec above. Now we can loop over them,
 		// add each token to the tokens map, and store the token id in the set.
 		for token in set_tokens {
 			token_sets.entry(slug.to_string()).and_modify(|v| {
-				v.push(token.id());
+				v.0.push(token.id());
 			});
 
 			tokens.insert(token.id(), token);

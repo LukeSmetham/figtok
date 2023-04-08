@@ -8,6 +8,7 @@ extern crate serde_json;
 mod replace_method;
 mod shadow_value;
 mod token;
+mod token_set;
 mod token_store;
 mod token_definition;
 mod token_kind;
@@ -19,13 +20,13 @@ pub mod utils;
 // "Exports"
 pub use shadow_value::ShadowValue;
 pub use token::Token;
+pub use token_set::TokenSet;
 pub use token_store::TokenStore;
 pub use token_definition::TokenDefinition;
 pub use token_kind::TokenKind;
 pub use replace_method::ReplaceMethod;
 
 // Type Aliases for Collections of Tokens.
-pub type TokenSet = Vec<String>;
 pub type TokenSets = HashMap<String, TokenSet>;
 pub type Tokens = HashMap<String, token::Token>;
 pub type Theme = HashMap<String, String>;
