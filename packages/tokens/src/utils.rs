@@ -1,7 +1,8 @@
 use convert_case::{Boundary, Case, Casing};
 
 pub fn css_stringify(s: &String) -> String {
-	s.replace(".", "-").with_boundaries(&[Boundary::LowerUpper, Boundary::Underscore, Boundary::Hyphen, Boundary::Space, Boundary::Acronym]).to_case(Case::Kebab)
+	let boundaries: [Boundary; 5] = [Boundary::LowerUpper, Boundary::Underscore, Boundary::Hyphen, Boundary::Space, Boundary::Acronym];
+	s.replace(".", "-").with_boundaries(&boundaries).to_case(Case::Kebab)
 }
 
 #[cfg(test)]
