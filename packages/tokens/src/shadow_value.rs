@@ -9,13 +9,13 @@ pub struct ShadowValue(pub Vec<ShadowLayer>);
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ShadowLayer {
-    color: String,
+    pub(crate) color: String,
     #[serde(alias = "type")]
-    kind: ShadowLayerKind,
-    x: String,
-    y: String,
-    blur: String,
-    spread: String,
+    pub(crate) kind: ShadowLayerKind,
+    pub(crate) x: String,
+    pub(crate) y: String,
+    pub(crate) blur: String,
+    pub(crate) spread: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -5,17 +5,26 @@ extern crate serde_derive;
 extern crate serde_json;
 
 // Internal Modules
+mod replace_method;
 mod shadow_value;
-mod utils;
+mod token;
+mod token_store;
+mod token_definition;
+mod token_kind;
 
 // Public Modules
 pub mod regex;
-pub mod replace_method;
-pub mod token;
-pub mod token_definition;
-pub mod token_kind;
+pub mod utils;
 
-// Some Type Aliases (May remove these)
+// "Exports"
+pub use shadow_value::ShadowValue;
+pub use token::Token;
+pub use token_store::TokenStore;
+pub use token_definition::TokenDefinition;
+pub use token_kind::TokenKind;
+pub use replace_method::ReplaceMethod;
+
+// Type Aliases for Collections of Tokens.
 pub type TokenSet = Vec<String>;
 pub type TokenSets = HashMap<String, TokenSet>;
 pub type Tokens = HashMap<String, token::Token>;

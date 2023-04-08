@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use figtok::Figtok;
 use serde_json::json;
 use convert_case::{Case, Casing};
 
@@ -8,7 +7,8 @@ use crate::token_definition::TokenDefinition;
 use crate::shadow_value::ShadowValue;
 use crate::replace_method::ReplaceMethod;
 use crate::regex::REGEX_CALC;
-use crate::utils::{css_stringify, get_token_reference};
+use crate::token_store::TokenStore;
+use crate::utils::{css_stringify};
 
 /// The Token enum encapsulates our different TokenDefinition variants, allowing us to store
 /// them all together a single type (i.e. in a collection) whilst parsing/serializing each one
@@ -49,7 +49,7 @@ impl Token {
 	/// This is primarily used to access the value of a token, when we are expanding a token value that references another token.
 	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
 	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
-    pub fn value(&self, ctx: &Figtok, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
+    pub fn value(&self, ctx: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
         let mut value = match self {
             Token::Standard(t) => t.get_value(ctx, replace_method, nested, theme),
             Token::Shadow(t) => t.get_value(ctx, replace_method, theme),
@@ -68,7 +68,7 @@ impl Token {
         value
     }
 
-	pub fn to_css(&self, ctx: &Figtok, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+	pub fn to_css(&self, ctx: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
 		match self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				format!(
@@ -83,9 +83,9 @@ impl Token {
 				class.push_str(format!(".{} {{", css_stringify(&t.name)).as_str());
 
 				for (key, value) in t.value.as_object().unwrap() {
-					// Here we call get_token_reference directly as the inner values of a composition token are not tokens in their own right, 
+					// Here we call enrich directly as the inner values of a composition token are not tokens in their own right, 
 					//so don't already exist on ctx - but may still contain references to tokens.
-					let token_value = get_token_reference(serde_json::from_value::<String>(value.to_owned()).unwrap(), ctx, replace_method, theme);
+					let token_value = ctx.enrich(serde_json::from_value::<String>(value.to_owned()).unwrap(), replace_method, theme);
 					class.push_str(
 					format!(
 							"{}: {};", 
@@ -102,7 +102,7 @@ impl Token {
 		}
 	}
 	
-	pub fn to_json(&self, ctx: &Figtok, replace_method: ReplaceMethod, theme: &Option<String>) -> serde_json::Value {
+	pub fn to_json(&self, ctx: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> serde_json::Value {
 		match &self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				let token_name = self.name();
@@ -126,7 +126,7 @@ impl Token {
 				let mut properties: HashMap<String, String> = HashMap::new();
 
 				for (property_name, property_value) in t.value.as_object().unwrap() {
-					let inner_value = get_token_reference(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), ctx, replace_method, &theme);
+					let inner_value = ctx.enrich(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), replace_method, &theme);
 					properties.insert(property_name.clone(), inner_value);
 				}
 

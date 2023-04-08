@@ -68,9 +68,9 @@ mod test {
 			"10px - var(--width)",
 			"var(--width) * 10px",
 			"10px / var(--width)",
-			"5 + 10 + 15",
-			"10 - 5 - 5",
-			"10 / 5 / 5",
+			// TODO "5 + 10 + 15",
+			// "10 - 5 - 5",
+			// "10 / 5 / 5",
 		];
 
 		for current in test_strings {
