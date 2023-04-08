@@ -2,8 +2,6 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-extern crate once_cell;
-
 pub mod load;
 pub mod serialize;
 
