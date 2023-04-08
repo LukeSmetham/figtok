@@ -25,11 +25,11 @@ pub struct TokenDefinition<T> {
 
 impl TokenDefinition<String> {
 	// Follows references and returns a string value - this is super simple and applies to most tokens other than Composition, Typography and Shadow.
-    pub fn get_value(&self, ctx: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
+    pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
         // Check if the original_value contains handlebar syntax with a reference to another token.
         let value = if REGEX_HB.is_match(&self.value) {
 			// if so, follow the reference:
-			let mut v = ctx.enrich(self.value.to_string(), replace_method, &theme);
+			let mut v = store.enrich(self.value.to_string(), replace_method, &theme);
 			
 			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
 			// we must also insure we aren't nested so that values that are multiple refs deep don't
@@ -62,7 +62,7 @@ impl TokenDefinition<String> {
 impl TokenDefinition<ShadowValue> {
 	/// Shadow values can be expressed as a single string. Because of this it can take the Vec<ShadowLayer>
 	/// from serializing the JSON, and deref + concatenate it all together into a single css variable. 
-    pub fn get_value(&self, ctx: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+    pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
         let mut value: Vec<String> = vec![];
 
         for layer in &self.value.0 {
@@ -87,7 +87,7 @@ impl TokenDefinition<ShadowValue> {
             };
         }
 
-        ctx.enrich(value.join(", "), replace_method, &theme)
+        store.enrich(value.join(", "), replace_method, &theme)
     }
 }
 
