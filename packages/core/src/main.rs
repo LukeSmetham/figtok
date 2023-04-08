@@ -47,6 +47,5 @@ fn main() {
 
 	serializer.serialize(&figtok);
 
-
     println!("Done! Check {} for the built files.", args.output);
 }

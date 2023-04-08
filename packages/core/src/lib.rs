@@ -7,7 +7,6 @@ extern crate once_cell;
 pub mod load;
 pub mod serialize;
 
-use regex::{Captures};
 use tokens::{
 	Tokens, 
 	TokenSets, 
@@ -18,10 +17,10 @@ use tokens::{
 	utils::css_stringify,
 	TokenStore
 };
+use regex::Captures;
 
 pub struct Figtok {
     pub output_path: String,
-
 	pub tokens: Tokens,
     pub token_sets: TokenSets,
     pub themes: Themes,
