@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
 use serde_json::json;
 use convert_case::{Case, Casing};
 
@@ -138,41 +137,6 @@ impl Token {
 
 				j
 			}
-		}
-	}
-}
-impl Serialize for Token {
-	fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-		where
-			S: serde::Serializer {
-			// serializer.serialize_str("TOKEN");
-			todo!();
-	}
-}
-
-#[cfg(test)]
-mod test {
-	use super::*;
-
-	mod serialize {
-		use super::*;
-		use crate::token_kind::TokenKind;
-
-		#[test]
-		fn serializes_to_css_string() {
-			let def = TokenDefinition {
-				value: String::from("#000000"),
-				kind: TokenKind::Color,
-				name: String::from("color.gray.0"),
-				id: String::from("color.gray.0")	
-			};
-
-			let token = Token::Standard(def);
-
-			assert_eq!(
-				token.serialize(serde_json::value::Serializer).unwrap(),
-				"--color-gray-0: #000000;"
-			)
 		}
 	}
 }

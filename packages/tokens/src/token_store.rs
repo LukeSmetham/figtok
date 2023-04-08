@@ -8,3 +8,9 @@ pub trait TokenStore {
 	/// the referenced values directly, or a valid css variable selector depending on ReplaceMethod
 	fn enrich(&self, reference: String, replace_method: ReplaceMethod, theme: &Option<String>) -> String;
 }
+
+impl dyn TokenStore {
+	pub fn test(&self) -> String {
+		String::from("works")
+	}
+}
