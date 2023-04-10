@@ -8,7 +8,7 @@ pub static REGEX_HB: Lazy<Regex> = Lazy::new(|| {
 
 /// Stores a Regex to find valid CSS arithmetic expressions	
 pub static REGEX_CALC: Lazy<Regex> = Lazy::new(|| {
-	Regex::new(r"^( )?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)\s[+\-\*/]\s(\-)?(var\(--.*\)|[\d\.]+(%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)( )?$").unwrap()
+	Regex::new(r"^(var\(--.*\)|[\d.]+(?:%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)(\s+)([+\-*/])(\s+)(var\(--.*\)|[\d.]+(?:%|vh|vw|vmin|vmax|em|rem|px|cm|ex|in|mm|pc|pt|ch|q|deg|rad|grad|turn|s|ms|hz|khz)?)$").unwrap()
 });
 
 #[cfg(test)]
@@ -69,11 +69,13 @@ mod test {
 			"var(--width) * 10px",
 			"10px / var(--width)",
 			// TODO "5 + 10 + 15",
+			// "1rem + 10% - 5px",
 			// "10 - 5 - 5",
 			// "10 / 5 / 5",
 		];
 
 		for current in test_strings {
+			println!("{}", current);
 			assert!(REGEX_CALC.is_match(current));
 		}
 	}
@@ -91,6 +93,7 @@ mod test {
 		];
 
 		for current in test_strings {
+			println!("{}", current);
 			assert!(!REGEX_CALC.is_match(current));
 		}
 	}
