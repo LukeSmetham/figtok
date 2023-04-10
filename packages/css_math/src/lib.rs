@@ -14,27 +14,59 @@ fn tokenize(input: &str) -> Option<Vec<Token>> {
 
 	while let Some(&c) = chars.peek() {
 		match c {
+			// Number
 			'0'..='9' | '.' => {
 				let mut num = String::new();
+
+				// Continually call chars.peek() to check if we have a number or a '.' character
+				// We can then call next and push into our num string until we hit something that
+				// no longer matches.
 				while let Some('0'..='9') | Some('.') = chars.peek() {
 					num.push(chars.next().unwrap());
 				}
+
+				// Assertion: Number should not end with a '.'
+				// TODO: Check this against the spec
+				if num.ends_with('.') {
+					return None;
+				}
+
+				// Push our number token
 				tokens.push(Token::Number(num));
+
+				// Now check the following character, and only continue if we have a whitespace, a unit or the end of the string (None).
+				if !matches!(chars.peek(), Some('%' | 'a'..='z') | Some(')') | Some(' ') | None) {
+                    return None;
+                }
 			},
+			// Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
 			'%' | 'a'..='z' => {
 				let mut unit = String::new();
+
+				// Call peek until we no longer have something matching the spec of our Unit
 				while let Some('%') | Some('a'..='z') = chars.peek() {
 					unit.push(chars.next().unwrap());
 				}
 
+				// If we have a variable, create the token as a variable.
 				if unit.starts_with("var(--") && unit.ends_with(')') {
 					tokens.push(Token::Variable(unit));
-				} else {
+				} else { // else its a unit
 					tokens.push(Token::Unit(unit));
 				}
+
+				// If the following character isn't either a close parens, whitespace or the end of the string then exit.
+				if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
+                    return None;
+                }
 			}
 			'+' | '-' | '*' | '/' => {
 				tokens.push(Token::Operator(chars.next().unwrap().to_string()));
+
+				// Operators should always have trailing whitespace.
+				if !matches!(chars.peek(), Some(' ')) {
+                    return None;
+                }
 			}
 			'(' => {
 				tokens.push(Token::LeftParen);
@@ -102,7 +134,7 @@ mod tests {
 	mod tokenize {
 		use super::*;
 
-		mod math {
+		mod operations {
 			use super::*;
 
 			#[test]
@@ -131,6 +163,53 @@ mod tests {
 				let expected_tokens = [Token::LeftParen, Token::Number(String::from("2")), Token::Operator(String::from("*")), Token::Number(String::from("10")), Token::Unit(String::from("ch")), Token::RightParen, Token::Operator(String::from("+")), Token::Number(String::from("4")), Token::Unit(String::from("px"))];
 				
 				assert_eq!(tokens, expected_tokens);
+			}
+		}
+
+		mod syntax {
+			use super::*;
+
+			/// CSS calc statements should always have a space between the operators and operands.
+			#[test]
+			fn whitepsace() {
+	
+				let invalid_inputs = vec![
+					"100*10px",
+					"100 /10px",
+					"100* 10px",
+					"100px/10%",
+					"100px /10%",
+					"100px/ 10%",
+					"(2*2) + 4px",
+					"(2 * 2)+4px",
+					"(2%- 2) + 10vh",
+					"100% *(10 + 10vh)",
+				];
+
+				for current in invalid_inputs {
+					let tokens = tokenize(current);
+
+					if let None = tokens {
+						assert!(true)
+					}
+				}
+
+				let valid_inputs = vec![
+					"100 * 10px",
+					"100px / 10%",
+					"(2 * 2) + 4px",
+					"(2 * 2) + 4px",
+					"(2% - 2) + 10vh",
+					"100% * (10 + 10vh)",
+				];
+				
+				for current in valid_inputs {
+					let tokens = tokenize(current);
+
+					if let Some(_) = tokens {
+						assert!(true)
+					}
+				}
 			}
 		}
 	}
