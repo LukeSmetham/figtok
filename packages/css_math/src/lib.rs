@@ -4,6 +4,8 @@ enum Token {
 	Unit(String),
 	Variable(String),
 	Operator(String),
+	LeftParen,
+	RightParen,
 }
 
 fn tokenize(input: &str) -> Option<Vec<Token>> {
@@ -34,6 +36,14 @@ fn tokenize(input: &str) -> Option<Vec<Token>> {
 			'+' | '-' | '*' | '/' => {
 				tokens.push(Token::Operator(chars.next().unwrap().to_string()));
 			}
+			'(' => {
+				tokens.push(Token::LeftParen);
+				chars.next();
+			}
+			')' => {
+				tokens.push(Token::RightParen);
+				chars.next();
+			}
 			' ' => {
 				chars.next();
 			}
@@ -45,6 +55,8 @@ fn tokenize(input: &str) -> Option<Vec<Token>> {
 
 fn is_valid_css_math(tokens: &[Token]) -> bool {
 	let mut expecting_operand = true;
+	let mut paren_count = 0;
+
 	for token in tokens {
 		match token {
 			Token::Number(_) | Token::Variable(_) => {
@@ -64,6 +76,18 @@ fn is_valid_css_math(tokens: &[Token]) -> bool {
 				}
 
 				expecting_operand = true;
+			}
+			Token::LeftParen => {
+				if !expecting_operand {
+					return false;
+				}
+				paren_count += 1;
+			}
+			Token::RightParen => {
+				if expecting_operand || paren_count == 0 {
+					return false;
+				}
+				paren_count -= 1;
 			}
 		}
 	}
