@@ -38,6 +38,8 @@ fn handle_variable_or_unit(chars: &mut Peekable<Chars>) -> Token {
     Token::Variable(variable)
 }
 
+/// Tokenize is responsible for an input string, and breaking it up into tokens, returning
+/// a Vec<Token>. It also does some checks on correct whitespace around Operator tokens.
 pub fn tokenize(input: &str) -> Option<Vec<Token>> {
     let mut tokens = Vec::new();
     let mut chars = input.chars().peekable();
@@ -55,8 +57,7 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                     num.push(chars.next().unwrap());
                 }
 
-                // Assertion: Number should not end with a '.'
-                // TODO: Check this against the spec
+                // In CSS, float values without the trailing digits are not valid syntax (i.e. `10.`)
                 if num.ends_with('.') {
                     return None;
                 }
