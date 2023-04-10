@@ -1,3 +1,5 @@
+/// Tokenizer and validation checks CSS Math statements.
+
 #[derive(Debug, PartialEq)]
 enum Token {
 	Number(String),
@@ -39,26 +41,49 @@ fn tokenize(input: &str) -> Option<Vec<Token>> {
                     return None;
                 }
 			},
-			// Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
+			// Var/Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
 			'%' | 'a'..='z' => {
 				let mut unit = String::new();
-
+				
 				// Call peek until we no longer have something matching the spec of our Unit
 				while let Some('%') | Some('a'..='z') = chars.peek() {
 					unit.push(chars.next().unwrap());
 				}
 
 				// If we have a variable, create the token as a variable.
-				if unit.starts_with("var(--") && unit.ends_with(')') {
-					tokens.push(Token::Variable(unit));
+				if unit.starts_with("var") {
+					// Check that the next char is (
+					if let Some('(') = chars.peek() {
+						unit.push(chars.next().unwrap());
+
+						// Checks for "--"
+						while let Some('-') = chars.peek() {
+							unit.push(chars.next().unwrap());
+
+							// Next value should be a-z " 0-9"
+							while let Some('a'..='z') | Some('0'..='9') = chars.peek() {
+								unit.push(chars.next().unwrap());
+							}
+
+							// If the above loops are done, we should have a ')' to close the var() statement.
+							if let Some(')')  = chars.peek() {
+								unit.push(chars.next().unwrap());
+							}
+						}
+					}
+
+					// Finally before pushing the token, check we have var(--[a-z|0-9|-])
+					if unit.starts_with("var(--") && unit.ends_with(')') {
+						tokens.push(Token::Variable(unit));
+					}
 				} else { // else its a unit
 					tokens.push(Token::Unit(unit));
+					
+					// If the following character isn't either a close parens, whitespace or the end of the string then exit.
+					if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
+						return None;
+					}
 				}
-
-				// If the following character isn't either a close parens, whitespace or the end of the string then exit.
-				if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
-                    return None;
-                }
 			}
 			'+' | '-' | '*' | '/' => {
 				tokens.push(Token::Operator(chars.next().unwrap().to_string()));
@@ -163,6 +188,53 @@ mod tests {
 				let expected_tokens = [Token::LeftParen, Token::Number(String::from("2")), Token::Operator(String::from("*")), Token::Number(String::from("10")), Token::Unit(String::from("ch")), Token::RightParen, Token::Operator(String::from("+")), Token::Number(String::from("4")), Token::Unit(String::from("px"))];
 				
 				assert_eq!(tokens, expected_tokens);
+			}
+		}
+
+		mod variables {
+			use super::*;
+			
+			#[test]
+			fn valid() {
+				let input = "var(--background)";
+				let tokens = tokenize(input).unwrap();
+
+				let expected_tokens = [Token::Variable(String::from("var(--background)"))];
+				assert_eq!(tokens, expected_tokens);
+
+				let input = "var(--typescale-base)";
+				let tokens = tokenize(input).unwrap();
+
+				let expected_tokens = [Token::Variable(String::from("var(--typescale-base)"))];
+				assert_eq!(tokens, expected_tokens);
+
+				let input = "var(--typescale-base) * var(--typescale-1)";
+				let tokens = tokenize(input).unwrap();
+
+				let expected_tokens = [Token::Variable(String::from("var(--typescale-base)")), Token::Operator(String::from("*")), Token::Variable(String::from("var(--typescale-1)"))];
+
+				assert_eq!(tokens, expected_tokens);
+			}
+
+			#[test]
+			fn invalid() {
+				let invalid_inputs = vec![
+					"var(-typescale-base)",
+					"var(---typescale-base)",
+					"var(-(typescale-base)",
+					"var(-)typescale-base)",
+					"var(--*typescale)",
+					"var(--0typescale)",
+					"var(--typescale-1-)",
+				];
+
+				for current in invalid_inputs {
+					let tokens = tokenize(current);
+
+					if let None = tokens {
+						assert!(true)
+					}
+				}
 			}
 		}
 
