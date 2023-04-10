@@ -102,21 +102,36 @@ mod tests {
 	mod tokenize {
 		use super::*;
 
-		#[test]
-		fn tokenizes_basic_math() {
-			// Single Operation
-			let mut input = "5 + 10";
-			let mut tokens = tokenize(input).unwrap();
-			let expected_tokens = [Token::Number(String::from("5")), Token::Operator(String::from("+")), Token::Number(String::from("10"))];
+		mod math {
+			use super::*;
 
-			assert_eq!(tokens, expected_tokens);
-			
-			// Multiple Operations
-			input = "5vh - 10px + 100%";
-			tokens = tokenize(input).unwrap();
-			let expected_tokens = [Token::Number(String::from("5")), Token::Unit(String::from("vh")), Token::Operator(String::from("-")), Token::Number(String::from("10")), Token::Unit(String::from("px")), Token::Operator(String::from("+")), Token::Number(String::from("100")), Token::Unit(String::from("%"))];
-			
-			assert_eq!(tokens, expected_tokens);
-		} 
+			#[test]
+			fn basic_math() {
+				// Single Operation
+				let input = "5 + 10";
+				let tokens = tokenize(input).unwrap();
+				let expected_tokens = [Token::Number(String::from("5")), Token::Operator(String::from("+")), Token::Number(String::from("10"))];
+
+				assert_eq!(tokens, expected_tokens);
+			} 
+
+			#[test]
+			fn multiple_ops() {
+				let input = "5vh - 10px + 100%";
+				let tokens = tokenize(input).unwrap();
+				let expected_tokens = [Token::Number(String::from("5")), Token::Unit(String::from("vh")), Token::Operator(String::from("-")), Token::Number(String::from("10")), Token::Unit(String::from("px")), Token::Operator(String::from("+")), Token::Number(String::from("100")), Token::Unit(String::from("%"))];
+				
+				assert_eq!(tokens, expected_tokens);
+			}
+
+			#[test]
+			fn parenthesis() {
+				let input = "(2 * 10ch) + 4px";
+				let tokens = tokenize(input).unwrap();
+				let expected_tokens = [Token::LeftParen, Token::Number(String::from("2")), Token::Operator(String::from("*")), Token::Number(String::from("10")), Token::Unit(String::from("ch")), Token::RightParen, Token::Operator(String::from("+")), Token::Number(String::from("4")), Token::Unit(String::from("px"))];
+				
+				assert_eq!(tokens, expected_tokens);
+			}
+		}
 	}
 }
