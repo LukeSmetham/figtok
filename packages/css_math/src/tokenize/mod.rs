@@ -1,45 +1,7 @@
 use crate::token::Token;
-use std::{iter::Peekable, str::Chars};
 
 mod error;
 use error::TokenizationError;
-
-fn handle_variable_or_unit(chars: &mut Peekable<Chars>) -> Token {
-    let mut variable = String::new();
-
-    // This first while loop allows us to capture every character that could
-    // potentially be a unit (px|vh|vw|%|rem|...) but will also match "var".
-    while let Some('%') | Some('a'..='z') = chars.peek() {
-        variable.push(chars.next().unwrap());
-    }
-
-    if !variable.starts_with("var") {
-        // If the above ran, and we don't have `var`, we must have a unit.
-        return Token::Unit(variable);
-    }
-
-    // Check that the next char is (
-    if let Some('(') = chars.peek() {
-        variable.push(chars.next().unwrap());
-
-        // Checks for "--"
-        while let Some('-') = chars.peek() {
-            variable.push(chars.next().unwrap());
-
-            // Next value should be a-z " 0-9"
-            while let Some('a'..='z') | Some('0'..='9') = chars.peek() {
-                variable.push(chars.next().unwrap());
-            }
-
-            // If the above loops are done, we should have a ')' to close the var() statement.
-            if let Some(')') = chars.peek() {
-                variable.push(chars.next().unwrap());
-            }
-        }
-    }
-
-    Token::Variable(variable)
-}
 
 /// Tokenize is responsible for taking a CSS Math statement (without the `calc()`) and producing 
 /// an Option<Vec<Token>>, preserving the order and value of each token.
@@ -56,47 +18,55 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, TokenizationError> {
             '0'..='9' | '.' | '-' => {
                 let mut num = String::new();
 
-				// Check for a negative sign before the number
                 if let Some('-') = chars.peek() {
                     num.push(chars.next().unwrap());
                 }
 
-				if num == '-'.to_string() && matches!(chars.peek(), Some(' ') | Some('(') | None) {
+				if num == '-'.to_string() && matches!(chars.peek(), Some(' ') | None) {
 					tokens.push(Token::Operator(num));
 				} else {
-					// Continually call chars.peek() to check if we have a number or a '.' character
-					// We can then call next and push into our num string until we hit something that
-					// no longer matches.
 					while let Some('0'..='9') | Some('.') = chars.peek() {
 						num.push(chars.next().unwrap());
 					}
-	
-					if num == '-'.to_string() {
-						// We handle the `-` operator here, as it may be a negative number if it is immediately followed by a number.
-						if matches!(chars.peek(), Some(' ')) {
-							tokens.push(Token::Operator(num));
-						} else {
-							return Err(TokenizationError::InvalidNegativeOperator(num));
-						}
-					} else {
-						// Push our number token
-						tokens.push(Token::Number(num));
-					}
+
+					// Push our number token
+					tokens.push(Token::Number(num));
 				}
             }
             // Var/Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
             '%' | 'a'..='z' => {
-                let token = handle_variable_or_unit(&mut chars);
+				let mut output = String::new();
 
-                match token {
-                    Token::Variable(t) => {
-                        tokens.push(Token::Variable(t));
-                    }
-                    Token::Unit(t) => tokens.push(Token::Unit(t)),
-                    t => {
-                        return Err(TokenizationError::UnrecognizedToken(t));
-                    }
-                }
+				// This first while loop allows us to capture every character that could
+				// potentially be a unit (px|vh|vw|%|rem|...) but will also match "var".
+				while let Some('%') | Some('a'..='z') = chars.peek() {
+					output.push(chars.next().unwrap());
+				}
+
+				if !output.starts_with("var") {
+					// If the above ran, and we don't have `var`, we must have a unit.
+					tokens.push(Token::Unit(output.clone()));
+					continue;
+				}
+				
+                // Check that the next char is (
+				if let Some('(') = chars.peek() {
+					output.push(chars.next().unwrap());
+
+					// Checks for "--"
+					while let Some('-') = chars.peek() {
+						output.push(chars.next().unwrap());
+
+						// Next value should be a-z or "0-9" or the closing parenthesis
+						while let Some('a'..='z') | Some('0'..='9') | Some(')') = chars.peek() {
+							output.push(chars.next().unwrap());
+						}
+					}
+				}
+
+				if output.starts_with("var(--") && output.ends_with(")") {
+					tokens.push(Token::Variable(output));
+				}
             }
             '+' | '*' | '/' => {
                 tokens.push(Token::Operator(chars.next().unwrap().to_string()));
@@ -138,6 +108,7 @@ mod tests {
                 Token::Operator(String::from("+")),
 				Token::Whitespace,
                 Token::Number(String::from("10")),
+                Token::Unit(String::from("px")),
             ];
 
             assert_eq!(tokens, expected_tokens);
@@ -153,7 +124,7 @@ mod tests {
 				Token::Whitespace,
                 Token::Operator(String::from("-")),
 				Token::Whitespace,
-                Token::Number(String::from("-10")),
+                Token::Number(String::from("10")),
                 Token::Unit(String::from("px")),
 				Token::Whitespace,
                 Token::Operator(String::from("+")),
