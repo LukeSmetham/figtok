@@ -47,8 +47,13 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
     while let Some(&c) = chars.peek() {
         match c {
             // Number
-            '0'..='9' | '.' => {
+            '0'..='9' | '.' | '-' => {
                 let mut num = String::new();
+
+				// Check for a negative sign before the number
+                if let Some('-') = chars.peek() {
+                    num.push(chars.next().unwrap());
+                }
 
                 // Continually call chars.peek() to check if we have a number or a '.' character
                 // We can then call next and push into our num string until we hit something that
@@ -62,16 +67,22 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                     return None;
                 }
 
-                // Push our number token
-                tokens.push(Token::Number(num));
+				if num == '-'.to_string() {
+					// We handle the `-` operator here, as it may be a negative number if the minus is immediately followed by a number.
+					tokens.push(Token::Operator(num));
+				} else {
+					// Push our number token
+					tokens.push(Token::Number(num));
+				}
+
 
                 // Now check the following character, and only continue if we have a whitespace, a unit or the end of the string (None).
-                if !matches!(
-                    chars.peek(),
-                    Some('%' | 'a'..='z') | Some(')') | Some(' ') | None
-                ) {
-                    return None;
-                }
+                // if !matches!(
+                //     chars.peek(),
+                //     Some('%' | 'a'..='z') | Some(')') | Some(' ') | None
+                // ) {
+                //     return None;
+                // }
             }
             // Var/Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
             '%' | 'a'..='z' => {
@@ -79,11 +90,7 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
 
                 match token {
                     Token::Variable(t) => {
-                        if t.starts_with("var(--") && t.ends_with(")") {
-                            tokens.push(Token::Variable(t));
-                        } else {
-                            return None;
-                        }
+                        tokens.push(Token::Variable(t));
                     }
                     Token::Unit(t) => tokens.push(Token::Unit(t)),
                     _ => {
@@ -92,17 +99,12 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                 }
 
                 // If the following character isn't either a close parens, whitespace or the end of the string then exit.
-                if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
-                    return None;
-                }
+                // if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
+                //     return None;
+                // }
             }
-            '+' | '-' | '*' | '/' => {
+            '+' | '*' | '/' => {
                 tokens.push(Token::Operator(chars.next().unwrap().to_string()));
-
-                // Operators should always have trailing whitespace.
-                if !matches!(chars.peek(), Some(' ')) {
-                    return None;
-                }
             }
             '(' => {
                 tokens.push(Token::LeftParen);
@@ -113,6 +115,8 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                 chars.next();
             }
             ' ' => {
+				tokens.push(Token::Whitespace);
+
                 chars.next();
             }
             _ => return None,
@@ -135,7 +139,9 @@ mod tests {
             let tokens = tokenize(input).unwrap();
             let expected_tokens = [
                 Token::Number(String::from("5")),
+				Token::Whitespace,
                 Token::Operator(String::from("+")),
+				Token::Whitespace,
                 Token::Number(String::from("10")),
             ];
 
@@ -149,10 +155,14 @@ mod tests {
             let expected_tokens = [
                 Token::Number(String::from("5")),
                 Token::Unit(String::from("vh")),
+				Token::Whitespace,
                 Token::Operator(String::from("-")),
+				Token::Whitespace,
                 Token::Number(String::from("10")),
                 Token::Unit(String::from("px")),
+				Token::Whitespace,
                 Token::Operator(String::from("+")),
+				Token::Whitespace,
                 Token::Number(String::from("100")),
                 Token::Unit(String::from("%")),
             ];
@@ -167,11 +177,15 @@ mod tests {
             let expected_tokens = [
                 Token::LeftParen,
                 Token::Number(String::from("2")),
+				Token::Whitespace,
                 Token::Operator(String::from("*")),
+				Token::Whitespace,
                 Token::Number(String::from("10")),
                 Token::Unit(String::from("ch")),
                 Token::RightParen,
+				Token::Whitespace,
                 Token::Operator(String::from("+")),
+				Token::Whitespace,
                 Token::Number(String::from("4")),
                 Token::Unit(String::from("px")),
             ];
@@ -202,7 +216,9 @@ mod tests {
 
             let expected_tokens = [
                 Token::Variable(String::from("var(--typescale-base)")),
+				Token::Whitespace,
                 Token::Operator(String::from("*")),
+				Token::Whitespace,
                 Token::Variable(String::from("var(--typescale-1)")),
             ];
 

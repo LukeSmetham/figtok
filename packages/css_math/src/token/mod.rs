@@ -6,4 +6,5 @@ pub enum Token {
 	Operator(String),
 	LeftParen,
 	RightParen,
+	Whitespace,
 }
