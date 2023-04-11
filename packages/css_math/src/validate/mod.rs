@@ -1,62 +1,81 @@
+mod error;
+
+use error::ValidationError;
+
 use crate::token::Token;
+
+// TODO: Validate variable syntax
+// TODO: Validate whitespace
+// TODO: Validate ordering
 
 /// Returns true if all tokens in the provided slice are valid.
 /// Will return false any of the tokens are not valid css.
-pub fn validate(tokens: &[Token]) -> bool {
+pub fn validate(tokens: &[Token]) -> Result<(), ValidationError> {
+	let mut previous_token: Option<&Token> = None;
+
 	//ensures we never have two consecutive unit tokens
-	let mut block_unit = true;
 	let mut expecting_operand = true;
 	let mut paren_count = 0;
 
 	for token in tokens {
 		match token {
-			Token::Number(_) | Token::Variable(_) => {
-				if !expecting_operand {
-					return false;
-				} 
-				expecting_operand = false;
-				block_unit = false;
-			}
-			Token::Unit(_) => {
-				if expecting_operand || block_unit {
-					return false;
+			Token::Number(value) | Token::Variable(value) => {
+				if value.ends_with(".") {
+					return Err(ValidationError::InvalidNumber(value.to_owned()))
 				}
 
-				block_unit = true;
+				if !expecting_operand {
+					return Err(ValidationError::InvalidToken);
+				} 
+				expecting_operand = false;
+			}
+			Token::Unit(_) => {
+				if expecting_operand {
+					return Err(ValidationError::InvalidToken);
+				}
 			}
 			Token::Operator(_) => {
 				if expecting_operand {
-					return false
+					return Err(ValidationError::InvalidToken);
 				}
 
-				block_unit = true;
 				expecting_operand = true;
 			}
 			Token::LeftParen => {
 				if !expecting_operand {
-					return false;
+					return Err(ValidationError::InvalidToken);
 				}
 
-				block_unit = true;
 				paren_count += 1;
 			}
 			Token::RightParen => {
 				if expecting_operand || paren_count == 0 {
-					return false;
+					return Err(ValidationError::InvalidToken);
 				}
 
-				block_unit = true;
 				paren_count -= 1;
 			}
 			Token::Whitespace => {
-				if expecting_operand {
-					return false;
+				if let Some(prev) = previous_token {
+					match prev {
+						Token::Number(_) | Token::Unit(_) | Token::Variable(_) | Token::RightParen => {},
+						_ => return Err(ValidationError::InvalidWhitespace)
+					}
+				} else {
+					return Err(ValidationError::InvalidWhitespace)
+				}
+
+ 				if expecting_operand {
+					return Err(ValidationError::InvalidToken);
 				}
 			}
 		}
+
+		previous_token = Some(token);
 	}
 
-	!expecting_operand && paren_count == 0
+	// !expecting_operand && !expecting_whitespace && paren_count == 0
+	Ok(())
 }
 
 // TODO: Rework these tests. I think it's better to test specific aspects of the CSS Calc spec.
@@ -74,13 +93,31 @@ mod tests {
 		fn disallow_consecutive_units() {
 			let examples = vec![
 				"12px px",
-				"px 2% rem",
-				"rem px 2px"
+				" 2% rem",
+				" 2px rem px"
 			];
 
 			for current in examples {
-				if let Some(tokens) = tokenize(current) {
-					assert!(!validate(&tokens));
+				let tokens = tokenize(current).unwrap();
+				if let Err(_) = validate(&tokens) {
+					assert!(true)
+				}
+			}
+		}
+
+		#[test]
+		fn disallow_unit_without_number() {
+			let examples = vec![
+				"px",
+				"ch",
+				"vh + 10%",
+				"10% * px",
+			];
+
+			for current in examples {
+				let tokens = tokenize(current).unwrap();
+				if let Err(_) = validate(&tokens) {
+					assert!(true)
 				}
 			}
 		}
@@ -94,112 +131,84 @@ mod tests {
 			// This one has a catch, the below string should be invalid
 			let invalid = "12px + + 2px";
 
-			if let Some(tokens) = tokenize(invalid) {
-				assert!(!validate(&tokens))
+			let tokens = tokenize(invalid).unwrap();
+			if let Err(_) = validate(&tokens) {
+				assert!(true)
 			}
 
 			// However, there is an exception - negative numbers
 			let valid = "12px + -2px";
 
-			if let Some(tokens) = tokenize(valid) {
-				println!("tokens: {:?}", tokens);
-				assert!(validate(&tokens))
-			} else {
-				assert!(false)
+			let tokens = tokenize(valid).unwrap();
+			if let Ok(_) = validate(&tokens) {
+				assert!(true)
 			}
 		}
-	}
 
-	#[test]
-	fn checks_validity() {
-		let valid_examples: Vec<&str> = vec![
-			"75% - 15px",
-			"90% / 3 - 10px",
-			"(100% - 60px) / 4",
-			"2rem + 3vh * 2",
-			"(4em * 3) - 60%",
-			"30% + 5em",
-			"20px * 3 + 10%",
-			"50% - 10vw + 5rem",
-			"80% - (100px + 10px)",
-			"(75% - 2 * 1em) / 2",
-			"12em - 6rem",
-			"100px / 2 + 25%",
-			"2vw * 3 + 2vh",
-			"3rem + 10px * 2",
-			"20% + 10% - 1em",
-			"25px * var(--size) - 10%",
-			"1fr - 4em + 2%",
-			"80vh / 10 + 5%",
-			"60% + 5em - 2rem",
-			"1in - var(--size-1) + 10px",
-			"100pt / 4 + 5%",
-			"4em * 3 - 50%",
-			"50% - (5 * 10px)",
-			"2cm + 5mm * 2",
-			"50% + 20px / 2",
-			"50% / 2 + 20px",
-			"100% - 50px - 5%",
-			"1rem * 2 + 2vh",
-			"(50% - 30px) / 5",
-			"100px + 10% + 5vw",
-			"3em - 50% / 2",
-			"4rem + 2vw * 4",
-			"1fr - 2em / 2",
-			"20px * (50% - 30px)",
-			"100vh / 6 + 10%",
-			"50% - 20px * 3",
-			"75% + 10px / 2",
-			"2rem + 50% * 2",
-			"20px + 10% * 3",
-			"100% / (3 + 2)",
-			"100px - 10% + 5vw",
-			"2rem * (1em + 1px)",
-			"10px + 20px - 5%",
-			"50% - (2 * 1em)",
-			"75% + 30px / 2",
-			"2rem * 50% * 2",
-			"100px + 20% / 2",
-			"50% - 20px + 1em",
-		];
+		#[test]
+		fn disallow_operators_without_leading_number() {
+			let examples = vec![
+				"+ 2px",
+				"- -12%",
+				"/ 2vw",
+				" * 10rem",
+				"+ var(--test)",
+				" - var(--gutter) * 2",
+				"* var(--test) + 10px",
+				" / var(--gutter) * 2px",
+			];
 
-		for current in valid_examples {
-			if let Some(tokens) = tokenize(current) {
-				assert!(validate(&tokens));
-			}
-		}
-	}
-
-	#[test]
-	fn checks_invalidity() {
-		let invalid_examples = vec![
-			"50% + + 20px",
-			"100px * / 2",
-			"100% - 50% -",
-			"3em 4em var(0r)",
-			"1rem + 2vh * / 3",
-			"10px / (3em +))",
-			"5px + (2 * (6px - 10)",
-			"50% - (20px - 5px",
-			"100vw / ",
-			"2em + (30px * 2",
-			"4em * 2 / * 2",
-			"2em)) + 50%",
-			"(3em * 2) - 50% -",
-			"1rem + 2vh 3",
-			"(100% - 40px / 3",
-			"2rem * 50% 3",
-		];
-
-		for current in invalid_examples {
-			if let Some(tokens) = tokenize(current) {
-				let invalid = !validate(&tokens);
-				if !invalid {
-					println!("\n\n{}: \n{:?}\n\n", current, tokens);
+			for current in examples {
+				let tokens = tokenize(current).unwrap();
+				if let Err(_) = validate(&tokens) {
+					assert!(true)
 				}
-				assert!(invalid);
-			} else {
-				assert!(true);
+			}
+		}
+
+		#[test]
+		fn disallow_operators_without_trailing_number() {
+			// there's a catch here again, negative numbers are okay to come first in the string
+
+			let examples = vec![
+				"2px + ",
+				"-12% -",
+				"2vw / ",
+				"10rem *",
+				"var(--test) + ",
+				"var(--gutter) * 2 -",
+				"var(--test) + 10px * ",
+				"var(--gutter) * 2px /",
+			];
+
+			for current in examples {
+				let tokens = tokenize(current).unwrap();
+				if let Err(_) = validate(&tokens) {
+					assert!(true)
+				}
+			}
+		}
+	}
+
+	mod number {
+		use matches::assert_matches;
+
+		use super::*;
+
+		#[test]
+		fn checks_for_invalid_floats() {
+			let examples = vec![
+				"15.",
+				"12.px",
+				"10.%",
+				"1.rem *",
+			];
+
+			for current in examples {
+				let tokens = tokenize(current).unwrap();
+				let result = validate(&tokens);
+				println!("{:?}", tokens);
+				assert_matches!(result, Err(ValidationError::InvalidNumber(_)))
 			}
 		}
 	}

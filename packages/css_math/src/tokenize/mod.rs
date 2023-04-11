@@ -1,6 +1,9 @@
 use crate::token::Token;
 use std::{iter::Peekable, str::Chars};
 
+mod error;
+use error::TokenizationError;
+
 fn handle_variable_or_unit(chars: &mut Peekable<Chars>) -> Token {
     let mut variable = String::new();
 
@@ -38,9 +41,12 @@ fn handle_variable_or_unit(chars: &mut Peekable<Chars>) -> Token {
     Token::Variable(variable)
 }
 
-/// Tokenize is responsible for an input string, and breaking it up into tokens, returning
-/// a Vec<Token>. It also does some checks on correct whitespace around Operator tokens.
-pub fn tokenize(input: &str) -> Option<Vec<Token>> {
+/// Tokenize is responsible for taking a CSS Math statement (without the `calc()`) and producing 
+/// an Option<Vec<Token>>, preserving the order and value of each token.
+/// 
+/// The tokenizer is not concerned with syntax validity or correct ordering of tokens - this should
+/// purely tokenize the input string ready to pass to the validator.
+pub fn tokenize(input: &str) -> Result<Vec<Token>, TokenizationError> {
     let mut tokens = Vec::new();
     let mut chars = input.chars().peekable();
 
@@ -55,34 +61,28 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                     num.push(chars.next().unwrap());
                 }
 
-                // Continually call chars.peek() to check if we have a number or a '.' character
-                // We can then call next and push into our num string until we hit something that
-                // no longer matches.
-                while let Some('0'..='9') | Some('.') = chars.peek() {
-                    num.push(chars.next().unwrap());
-                }
-
-                // In CSS, float values without the trailing digits are not valid syntax (i.e. `10.`)
-                if num.ends_with('.') {
-                    return None;
-                }
-
-				if num == '-'.to_string() {
-					// We handle the `-` operator here, as it may be a negative number if the minus is immediately followed by a number.
+				if num == '-'.to_string() && matches!(chars.peek(), Some(' ') | Some('(') | None) {
 					tokens.push(Token::Operator(num));
 				} else {
-					// Push our number token
-					tokens.push(Token::Number(num));
+					// Continually call chars.peek() to check if we have a number or a '.' character
+					// We can then call next and push into our num string until we hit something that
+					// no longer matches.
+					while let Some('0'..='9') | Some('.') = chars.peek() {
+						num.push(chars.next().unwrap());
+					}
+	
+					if num == '-'.to_string() {
+						// We handle the `-` operator here, as it may be a negative number if it is immediately followed by a number.
+						if matches!(chars.peek(), Some(' ')) {
+							tokens.push(Token::Operator(num));
+						} else {
+							return Err(TokenizationError::InvalidNegativeOperator(num));
+						}
+					} else {
+						// Push our number token
+						tokens.push(Token::Number(num));
+					}
 				}
-
-
-                // Now check the following character, and only continue if we have a whitespace, a unit or the end of the string (None).
-                // if !matches!(
-                //     chars.peek(),
-                //     Some('%' | 'a'..='z') | Some(')') | Some(' ') | None
-                // ) {
-                //     return None;
-                // }
             }
             // Var/Unit ("%", "px", "vh", etc. technically this will match "%" or any a-z chars.)
             '%' | 'a'..='z' => {
@@ -93,15 +93,10 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
                         tokens.push(Token::Variable(t));
                     }
                     Token::Unit(t) => tokens.push(Token::Unit(t)),
-                    _ => {
-                        return None;
+                    t => {
+                        return Err(TokenizationError::UnrecognizedToken(t));
                     }
                 }
-
-                // If the following character isn't either a close parens, whitespace or the end of the string then exit.
-                // if !matches!(chars.peek(), Some(')') | Some(' ') | None) {
-                //     return None;
-                // }
             }
             '+' | '*' | '/' => {
                 tokens.push(Token::Operator(chars.next().unwrap().to_string()));
@@ -116,13 +111,13 @@ pub fn tokenize(input: &str) -> Option<Vec<Token>> {
             }
             ' ' => {
 				tokens.push(Token::Whitespace);
-
                 chars.next();
             }
-            _ => return None,
+            c => return Err(TokenizationError::UnrecognizedCharacter(c))
         }
     }
-    Some(tokens)
+
+	Ok(tokens)
 }
 
 #[cfg(test)]
@@ -133,9 +128,9 @@ mod tests {
         use super::*;
 
         #[test]
-        fn basic_math() {
+        fn single_op() {
             // Single Operation
-            let input = "5 + 10";
+            let input = "5 + 10px";
             let tokens = tokenize(input).unwrap();
             let expected_tokens = [
                 Token::Number(String::from("5")),
@@ -158,7 +153,7 @@ mod tests {
 				Token::Whitespace,
                 Token::Operator(String::from("-")),
 				Token::Whitespace,
-                Token::Number(String::from("10")),
+                Token::Number(String::from("-10")),
                 Token::Unit(String::from("px")),
 				Token::Whitespace,
                 Token::Operator(String::from("+")),
@@ -194,102 +189,73 @@ mod tests {
         }
     }
 
-    mod variables {
-        use super::*;
+     #[test]
+	fn variables() {
+		let input = "var(--background)";
+		let tokens = tokenize(input).unwrap();
 
-        #[test]
-        fn valid() {
-            let input = "var(--background)";
-            let tokens = tokenize(input).unwrap();
+		let expected_tokens = [Token::Variable(String::from("var(--background)"))];
+		assert_eq!(tokens, expected_tokens);
 
-            let expected_tokens = [Token::Variable(String::from("var(--background)"))];
-            assert_eq!(tokens, expected_tokens);
+		let input = "var(--typescale-base)";
+		let tokens = tokenize(input).unwrap();
 
-            let input = "var(--typescale-base)";
-            let tokens = tokenize(input).unwrap();
+		let expected_tokens = [Token::Variable(String::from("var(--typescale-base)"))];
+		assert_eq!(tokens, expected_tokens);
 
-            let expected_tokens = [Token::Variable(String::from("var(--typescale-base)"))];
-            assert_eq!(tokens, expected_tokens);
+		let input = "var(--typescale-base) * var(--typescale-1)";
+		let tokens = tokenize(input).unwrap();
 
-            let input = "var(--typescale-base) * var(--typescale-1)";
-            let tokens = tokenize(input).unwrap();
+		let expected_tokens = [
+			Token::Variable(String::from("var(--typescale-base)")),
+			Token::Whitespace,
+			Token::Operator(String::from("*")),
+			Token::Whitespace,
+			Token::Variable(String::from("var(--typescale-1)")),
+		];
 
-            let expected_tokens = [
-                Token::Variable(String::from("var(--typescale-base)")),
-				Token::Whitespace,
-                Token::Operator(String::from("*")),
-				Token::Whitespace,
-                Token::Variable(String::from("var(--typescale-1)")),
-            ];
+		assert_eq!(tokens, expected_tokens);
+	}
 
-            assert_eq!(tokens, expected_tokens);
-        }
+	#[test]
+	fn negative_numbers_with_operators() {
+		let input = "-1 - 1";
+		let expected_tokens = vec![
+			Token::Number(String::from("-1")),
+			Token::Whitespace,
+			Token::Operator(String::from("-")),
+			Token::Whitespace,
+			Token::Number(String::from("1")),
+		];
 
-        #[test]
-        fn invalid() {
-            let invalid_inputs = vec![
-                "var(-typescale-base)",
-                "var(---typescale-base)",
-                "var(-(typescale-base)",
-                "var(-)typescale-base)",
-                "var(--*typescale)",
-                "var(--0typescale)",
-                "var(--typescale-1-)",
-            ];
+		assert_eq!(tokenize(input).unwrap(), expected_tokens);
+		
+		let input = "10 - -1";
+		let expected_tokens = vec![
+			Token::Number(String::from("10")),
+			Token::Whitespace,
+			Token::Operator(String::from("-")),
+			Token::Whitespace,
+			Token::Number(String::from("-1")),
+		];
 
-            for current in invalid_inputs {
-                let tokens = tokenize(current);
+		assert_eq!(tokenize(input).unwrap(), expected_tokens);
+		
+		let input = "(400 / -23) * 1";
+		let expected_tokens = vec![
+			Token::LeftParen,
+			Token::Number(String::from("400")),
+			Token::Whitespace,
+			Token::Operator(String::from("/")),
+			Token::Whitespace,
+			Token::Number(String::from("-23")),
+			Token::RightParen,
+			Token::Whitespace,
+			Token::Operator(String::from("*")),
+			Token::Whitespace,
+			Token::Number(String::from("1")),
+		];
 
-                if let None = tokens {
-                    assert!(true)
-                }
-            }
-        }
-    }
-
-    mod syntax {
-        use super::*;
-
-        /// CSS calc statements should always have a space between the operators and operands.
-        #[test]
-        fn whitepsace() {
-            let invalid_inputs = vec![
-                "100*10px",
-                "100 /10px",
-                "100* 10px",
-                "100px/10%",
-                "100px /10%",
-                "100px/ 10%",
-                "(2*2) + 4px",
-                "(2 * 2)+4px",
-                "(2%- 2) + 10vh",
-                "100% *(10 + 10vh)",
-            ];
-
-            for current in invalid_inputs {
-                let tokens = tokenize(current);
-
-                if let None = tokens {
-                    assert!(true)
-                }
-            }
-
-            let valid_inputs = vec![
-                "100 * 10px",
-                "100px / 10%",
-                "(2 * 2) + 4px",
-                "(2 * 2) + 4px",
-                "(2% - 2) + 10vh",
-                "100% * (10 + 10vh)",
-            ];
-
-            for current in valid_inputs {
-                let tokens = tokenize(current);
-
-                if let Some(_) = tokens {
-                    assert!(true)
-                }
-            }
-        }
-    }
+		assert_eq!(tokenize(input).unwrap(), expected_tokens);
+	}
 }
