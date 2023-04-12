@@ -4,5 +4,6 @@ use crate::token::Token;
 pub enum TokenizationError {
 	UnrecognizedToken(Token),
 	UnrecognizedCharacter(char),
-	InvalidNegativeOperator(String)
+	InvalidNegativeOperator(String),
+	InvalidVariable(String)
 }

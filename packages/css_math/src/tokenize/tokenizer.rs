@@ -10,7 +10,7 @@ pub struct Tokenizer<'a> {
 }
 
 impl<'a> Tokenizer<'a> {
-    pub(crate) fn new(input: &'a str) -> Self {
+    pub fn new(input: &'a str) -> Self {
         Tokenizer {
             chars: input.chars().peekable(),
         }
@@ -32,7 +32,7 @@ impl<'a> Tokenizer<'a> {
 
         op.push(self.chars.next().unwrap());
 
-        if op == String::from("-") && !matches!(self.chars.peek(), Some(' ')) {
+        if op == String::from("-") && matches!(self.chars.peek(), Some('0'..='9')) {
             return self.process_number(Some(op.clone()));
         }
 
@@ -72,8 +72,11 @@ impl<'a> Tokenizer<'a> {
 				}
 			}
 		}
-
-		Ok(Token::Variable(variable))
+		if variable.starts_with("var(--") && variable.ends_with(")") {
+			Ok(Token::Variable(variable))
+		} else {
+			Err(TokenizationError::InvalidVariable(variable))
+		}
 	}
 }
 
@@ -81,7 +84,6 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Result<Token, TokenizationError>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        println!("{:?}", self.chars.peek());
         // Implement the logic for tokenizing the input string
         match self.chars.peek() {
             Some(&c) => match c {
@@ -111,34 +113,61 @@ impl<'a> Iterator for Tokenizer<'a> {
 mod tests {
     use super::*;
     use matches::assert_matches;
+	use test_case::test_case;
 
-    #[test]
-    fn handles_number() {
-        let input = "42";
+     #[test_case("5")]
+    #[test_case("10")]
+    #[test_case("1.12")]
+    #[test_case("100")]
+    #[test_case("6.2")]
+    #[test_case("-60.0001")]
+    #[test_case("-1")]
+    #[test_case("10.5")]
+    fn handles_number(input: &str) {
         let mut tokenizer = Tokenizer::new(input);
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Number(_));
     }
 
-    #[test]
-    fn handles_unit() {
-        let input = "5px";
+    #[test_case("px")]
+    #[test_case("%")]
+    #[test_case("vh")]
+    #[test_case("vw")]
+    #[test_case("ch")]
+    #[test_case("cw")]
+    #[test_case("em")]
+    #[test_case("rem")]
+    fn handles_unit(input: &str) {
         let mut tokenizer = Tokenizer::new(input);
 		
-        assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Number(_));
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Unit(_));
     }
     
-	#[test]
-    fn handles_variable() {
-        let input = "var(--color)";
+	#[test_case("var(--color)")]
+	#[test_case("var(--typescale-1)")]
+	#[test_case("var(--ref-purple-100)")]
+	#[test_case("var(--gutter)")]
+    fn handles_variable(input: &str) {
         let mut tokenizer = Tokenizer::new(input);
 		
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Variable(_));
     }
 
-    #[test]
-    fn handles_operator() {
-        let input = "+";
+	#[test_case("varcolor)" ; "missing hyphens in variable name")]
+	#[test_case("var(-color)"  ; "incorrect hyphenation")]
+	#[test_case("var(--color"  ; "missing closing paren")]
+	fn handles_invalid_variable(input: &str) {
+		let mut tokenizer = Tokenizer::new(input);
+		assert_matches!(
+			tokenizer.next().unwrap(),
+			Err(TokenizationError::InvalidVariable(_))
+		);
+	}
+
+    #[test_case("+" ; "plus")]
+    #[test_case("-" ; "subtract")]
+    #[test_case("/" ; "divide")]
+    #[test_case("*" ; "multiply")]
+    fn handles_operator(input : &str) {
         let mut tokenizer = Tokenizer::new(input);
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Operator(_));
     }
@@ -157,16 +186,19 @@ mod tests {
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::LeftParen);
     }
 
-    #[test]
+	#[test]
     fn handles_right_paren() {
         let input = ")";
         let mut tokenizer = Tokenizer::new(input);
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::RightParen);
     }
 
-    #[test]
-    fn handles_unrecognized_character() {
-        let input = "&";
+    #[test_case("&" ; "ampersand")]
+    #[test_case("@" ; "at")]
+    #[test_case("^" ; "chevron")]
+    #[test_case("[" ; "bracket left")]
+    #[test_case("]" ; "bracket right")]
+    fn handles_unrecognized_character(input: &str) {
         let mut tokenizer = Tokenizer::new(input);
         assert_matches!(
             tokenizer.next().unwrap(),
