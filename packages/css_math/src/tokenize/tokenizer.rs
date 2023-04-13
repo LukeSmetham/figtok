@@ -44,7 +44,7 @@ impl<'a> Tokenizer<'a> {
 
         // This first while loop allows us to capture every character that could
         // potentially be a unit (px|vh|vw|%|rem|...) but will also match "var".
-        while let Some('%') | Some('a'..='z') = self.chars.peek() {
+        while let Some('%') | Some('a'..='z') | Some('A'..='Z') = self.chars.peek() {
             unit.push(self.chars.next().unwrap());
         }
 
@@ -67,7 +67,7 @@ impl<'a> Tokenizer<'a> {
 				variable.push(self.chars.next().unwrap());
 
 				// Next value should be a-z or "0-9" or the closing parenthesis
-				while let Some('a'..='z') | Some('0'..='9') | Some(')') = self.chars.peek() {
+				while let Some('a'..='z') | Some('A'..='Z') | Some('0'..='9') | Some(')') = self.chars.peek() {
 					variable.push(self.chars.next().unwrap());
 				}
 			}
@@ -88,7 +88,7 @@ impl<'a> Iterator for Tokenizer<'a> {
         match self.chars.peek() {
             Some(&c) => match c {
                 '0'..='9' => Some(self.process_number(None)),
-                '%' | 'a'..='z' => Some(self.process_unit()),
+                '%' | 'a'..='z' | 'A'..='Z' => Some(self.process_unit()),
                 '+' | '-' | '*' | '/' => Some(self.process_operator()),
                 ' ' => {
                     self.chars.next();

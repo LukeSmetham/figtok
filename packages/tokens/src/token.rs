@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 
+use css_math;
 use serde_json::json;
 use convert_case::{Case, Casing};
 
 use crate::token_definition::TokenDefinition;
 use crate::shadow_value::ShadowValue;
 use crate::replace_method::ReplaceMethod;
-use crate::regex::REGEX_CALC;
 use crate::token_store::TokenStore;
 use crate::utils::{css_stringify};
 
@@ -78,12 +78,12 @@ impl Token {
 			}, 
         };
 
-		// We check a regex for a css arithmetic expression and if we have a match,
-        // then we wrap the value in calc() so CSS can do the actual calculations for us,
-        // and we still keep the references to token variables alive.
-        if REGEX_CALC.is_match(&value) {
-            value = format!("calc({})", value);
-        };
+		// Run the token through our css math tokenizer to check if we should
+		// wrap the string in cal() or not.
+		println!("{}", &value);
+		if css_math::is_css_math(&value) {
+			value = format!("calc({})", value);
+		}
 
         value
     }

@@ -2,5 +2,8 @@
 pub enum ValidationError {
 	InvalidToken,
 	InvalidWhitespace,
-	InvalidNumber(String)
+	InvalidVariable(String),
+	InvalidNumber(String),
+	NoOperators,
+	MismatchedParentheses
 }

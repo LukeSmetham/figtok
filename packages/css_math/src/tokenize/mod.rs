@@ -6,7 +6,7 @@ mod error;
 use error::TokenizationError;
 
 
-pub fn tokenize(input: &str) -> Result<Vec<Token>, TokenizationError> {
+pub(crate) fn tokenize(input: &str) -> Result<Vec<Token>, TokenizationError> {
     let tokenizer = Tokenizer::new(input);
     let tokens: Result<Vec<Token>, _> = tokenizer.collect();
     tokens

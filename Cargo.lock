@@ -477,6 +477,7 @@ version = "0.1.0"
 dependencies = [
  "colors-transform",
  "convert_case",
+ "css_math",
  "once_cell",
  "regex",
  "serde",

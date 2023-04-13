@@ -1,4 +1,5 @@
 mod error;
+mod validator;
 
 use error::ValidationError;
 
@@ -7,10 +8,12 @@ use crate::token::Token;
 // TODO: Validate variable syntax
 // TODO: Validate whitespace
 // TODO: Validate ordering
-
 /// Returns true if all tokens in the provided slice are valid.
 /// Will return false any of the tokens are not valid css.
-pub fn validate(tokens: &[Token]) -> Result<(), ValidationError> {
+pub(crate) fn validate(tokens: &[Token]) -> Result<(), ValidationError> {
+	if !tokens.clone().iter().any(|t| matches!(t, Token::Operator(_))) {
+		return Err(ValidationError::NoOperators);
+	}
 	let mut previous_token: Option<&Token> = None;
 
 	//ensures we never have two consecutive unit tokens
@@ -58,7 +61,7 @@ pub fn validate(tokens: &[Token]) -> Result<(), ValidationError> {
 			Token::Whitespace => {
 				if let Some(prev) = previous_token {
 					match prev {
-						Token::Number(_) | Token::Unit(_) | Token::Variable(_) | Token::RightParen => {},
+						Token::Operator(_) | Token::Number(_) | Token::Unit(_) | Token::Variable(_) | Token::RightParen => {},
 						_ => return Err(ValidationError::InvalidWhitespace)
 					}
 				} else {
@@ -86,6 +89,18 @@ mod tests {
 
 	use super::*;
 
+	mod variables {
+		use super::*;
+
+		#[test]
+		fn abc() {
+			let input = "var(--typescale-3) * 1.5";
+
+			let tokens = tokenize(input).unwrap();
+			assert!(validate(&tokens).is_ok())
+		}
+	}
+
 	mod units {
 		use super::*;
 		
@@ -99,32 +114,40 @@ mod tests {
 
 			for current in examples {
 				let tokens = tokenize(current).unwrap();
-				if let Err(_) = validate(&tokens) {
-					assert!(true)
-				}
+				assert!(validate(&tokens).is_err())
 			}
 		}
 
 		#[test]
 		fn disallow_unit_without_number() {
 			let examples = vec![
-				"px",
-				"ch",
+				"px + 2px",
+				"ch + 10ch",
 				"vh + 10%",
 				"10% * px",
 			];
 
 			for current in examples {
 				let tokens = tokenize(current).unwrap();
-				if let Err(_) = validate(&tokens) {
-					assert!(true)
-				}
+				assert!(validate(&tokens).is_err())
 			}
 		}
 	}
 
 	mod operators {
 		use super::*;
+
+		use test_case::test_case;
+		
+		#[test_case("px")]
+		#[test_case("rem")]
+		#[test_case("10px")]
+		#[test_case("var(--test)")]
+		#[test_case("-100vh")]
+		fn errors_if_no_operators_present(input: &str) {
+			let tokens = tokenize(&input).unwrap();
+			assert!(validate(&tokens).is_err())
+		}
 
 		#[test]
 		fn disallow_consecutive_operators() {
@@ -140,9 +163,7 @@ mod tests {
 			let valid = "12px + -2px";
 
 			let tokens = tokenize(valid).unwrap();
-			if let Ok(_) = validate(&tokens) {
-				assert!(true)
-			}
+			assert!(validate(&tokens).is_ok())
 		}
 
 		#[test]
@@ -160,9 +181,7 @@ mod tests {
 
 			for current in examples {
 				let tokens = tokenize(current).unwrap();
-				if let Err(_) = validate(&tokens) {
-					assert!(true)
-				}
+				assert!(validate(&tokens).is_err())
 			}
 		}
 
@@ -183,9 +202,7 @@ mod tests {
 
 			for current in examples {
 				let tokens = tokenize(current).unwrap();
-				if let Err(_) = validate(&tokens) {
-					assert!(true)
-				}
+				assert!(validate(&tokens).is_err())
 			}
 		}
 	}
@@ -198,10 +215,10 @@ mod tests {
 		#[test]
 		fn checks_for_invalid_floats() {
 			let examples = vec![
-				"15.",
-				"12.px",
-				"10.%",
-				"1.rem *",
+				"15. * 2px",
+				"12.px * 10",
+				"10.% + 1",
+				"1.rem * 10",
 			];
 
 			for current in examples {
