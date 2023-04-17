@@ -85,26 +85,29 @@ impl<'a> Iterator for Tokenizer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         // Implement the logic for tokenizing the input string
-        match self.chars.peek() {
-            Some(&c) => match c {
-                '0'..='9' => Some(self.process_number(None)),
-                '%' | 'a'..='z' | 'A'..='Z' => Some(self.process_unit()),
-                '+' | '-' | '*' | '/' => Some(self.process_operator()),
-                ' ' => {
-                    self.chars.next();
-                    Some(Ok(Token::Whitespace))
+        loop {
+            if let Some(&c) = self.chars.peek() {
+                match c {
+                    '0'..='9' => return Some(self.process_number(None)),
+                    '%' | 'a'..='z' | 'A'..='Z' => return Some(self.process_unit()),
+                    '+' | '-' | '*' | '/' => return Some(self.process_operator()),
+                    ' ' => {
+                        self.chars.next();
+                        continue; // skip whitespace and continue iterating
+                    }
+                    '(' => {
+                        self.chars.next();
+                        return Some(Ok(Token::LeftParen));
+                    }
+                    ')' => {
+                        self.chars.next();
+                        return Some(Ok(Token::RightParen));
+                    }
+                    _ => return Some(Err(TokenizationError::UnrecognizedCharacter(c))),
                 }
-                '(' => {
-                    self.chars.next();
-                    Some(Ok(Token::LeftParen))
-                }
-                ')' => {
-                    self.chars.next();
-                    Some(Ok(Token::RightParen))
-                }
-                _ => Some(Err(TokenizationError::UnrecognizedCharacter(c))),
-            },
-            None => None,
+            } else {
+                return None;
+            }
         }
     }
 }
@@ -170,13 +173,6 @@ mod tests {
     fn handles_operator(input : &str) {
         let mut tokenizer = Tokenizer::new(input);
         assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Operator(_));
-    }
-
-    #[test]
-    fn handles_whitespace() {
-        let input = " ";
-        let mut tokenizer = Tokenizer::new(input);
-        assert_matches!(tokenizer.next().unwrap().unwrap(), Token::Whitespace);
     }
 
     #[test]
