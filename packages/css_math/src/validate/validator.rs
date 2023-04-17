@@ -19,6 +19,12 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
 		return Err(ValidationError::MismatchedParentheses)
 	}
 
+	let operators = t.iter().any(|c| matches!(c, Token::Operator(_)));
+
+	if !operators {
+		return Err(ValidationError::NoOperators)
+	}
+
 	for (prev, current) in tokens.iter() {
 		// validate based on the previous token
 		// Most useful for check a Token follows another kind of Token etc.
