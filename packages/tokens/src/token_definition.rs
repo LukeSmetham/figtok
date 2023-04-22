@@ -100,6 +100,7 @@ mod tests {
 
 		#[test]
 		fn can_be_deserialized_from_str() {
+			// In practice we use std to read the string from JSON files on disk.
 			let token_definition  = r#"{"value":"24px","kind":"fontSizes","name":"fontSize.0","id":"fontSize.0"}"#;
 
 			let token: TokenDefinition<String> = serde_json::from_str(token_definition).unwrap();
