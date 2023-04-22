@@ -6,3 +6,6 @@ target/
 # Core
 packages/core/tokens
 packages/core/build
+
+# Testing
+tarpaulin-report.html
