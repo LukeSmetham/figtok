@@ -10,8 +10,8 @@ use validate::validate;
 pub fn is_css_math(input: &str) -> bool {
     match tokenize(input) {
         Ok(tokens) => validate(&tokens),
-        Err(error) => {
-            println!("[TokenizationError]: {:?}", error);
+        Err(_) => {
+            // println!("[TokenizationError]: {:?}", error);
             false
         }
     }

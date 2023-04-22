@@ -3,7 +3,6 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod load;
-pub mod serialize;
 mod log;
 
 use std::fs;

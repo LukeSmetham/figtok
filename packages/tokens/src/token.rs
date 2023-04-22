@@ -80,7 +80,7 @@ impl Token {
 
 		// Run the token through our css math tokenizer to check if we should
 		// wrap the string in cal() or not.
-		println!("{}", &value);
+		// println!("{}", &value);
 		if css_math::is_css_math(&value) {
 			value = format!("calc({})", value);
 		}

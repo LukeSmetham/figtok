@@ -1,9 +1,9 @@
 use crate::token::Token;
 
+#[allow(dead_code)] // TODO
 #[derive(Debug)]
 pub enum TokenizationError {
 	UnrecognizedToken(Token),
 	UnrecognizedCharacter(char),
-	InvalidNegativeOperator(String),
 	InvalidVariable(String)
 }

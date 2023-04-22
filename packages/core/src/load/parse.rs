@@ -99,7 +99,6 @@ fn parse_token_set(
 					_ => Token::Standard(create_token::<String>(token_id, token_name, value)),
 				};
 				
-				// println!("{} / {}[{}]", set_name, token.name(), token.id());
 				tokens.push(token);
 			}
 			// If the "type" (`kind`) property is not present, we have a nested token set
