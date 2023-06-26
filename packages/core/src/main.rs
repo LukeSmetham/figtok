@@ -41,7 +41,17 @@ fn main() {
 
 	let figtok = Figtok::new(tokens, token_sets, themes, &args.output);
 
-	figtok.serialize();
+	match args.format.as_str() {
+		"json" => {
+			figtok.to_json()
+		}
+		"css" => {
+			figtok.serialize()
+		}
+		f => {
+			panic!("Unrecognized format: {}", f)
+		}
+	}
 
 	log!("Done! Check {} for the built files.", figtok.output_path);
 }

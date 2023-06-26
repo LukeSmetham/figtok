@@ -6,7 +6,9 @@ pub mod load;
 mod log;
 
 use std::{fs, io};
+use merge_struct::merge;
 
+use serde_json::json;
 use tokens::{
 	Tokens, 
 	TokenSets, 
@@ -51,20 +53,7 @@ impl Figtok {
 			let mut variables = String::new();
 			let mut classes = String::new();
 
-			// ! Why? Can we not just filter on !== disabled and serialize all at once?
-			// Need to ensure the source sets are processed first?
-			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").map(|(k, _)| k).collect::<Vec<&String>>();
-			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").map(|(k, _)| k).collect::<Vec<&String>>();
-
-			for set_name in source_sets {
-				let token_set: &TokenSet  = &self.token_sets[set_name];
-
-				let output = token_set.serialize(self, &Some(name.clone()));
-				variables.push_str(&output.0);
-				classes.push_str(&output.1);
-			}
-
-			for set_name in enabled_sets {
+			for set_name in sets.into_iter().filter(|(_, v)| v.as_str() != "disabled").map(|(k, _)| k).collect::<Vec<&String>>() {
 				let token_set: &TokenSet  = &self.token_sets[set_name];
 
 				let output = token_set.serialize(self, &Some(name.clone()));
@@ -124,6 +113,56 @@ impl Figtok {
 		} else {
 			log!("Detected {} token sets...", self.token_sets.len());
 			self.serialize_token_sets();
+		}
+	}
+
+	pub fn to_json(&self) {
+		if !self.themes.is_empty() { 
+			log!("Detected {} themes...", self.themes.len());
+
+			for (name, sets) in &self.themes {
+				let mut value = json!({});
+				log!("Generating Theme: {}", name);
+
+				for set_name in sets.into_iter().filter(|(_, v)| v.as_str() != "disabled").map(|(k, _)| k).collect::<Vec<&String>>() {
+					let token_set: &TokenSet  = &self.token_sets[set_name];
+
+					value = merge(&value, &token_set.to_json(self, &Some(name.clone()))).unwrap();
+				}
+
+				// Write the css file.
+				let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
+				let _ = fs::write(
+					format!("{}.json", [self.output_path.to_string(), name_parts.join("-")].join("/")),
+					value.to_string(),
+				);
+			}
+		} else {
+			log!("Detected {} token sets...", self.token_sets.len());
+
+			for (set_name, token_set) in &self.token_sets {
+				let mut value = serde_json::from_str("{}").unwrap();
+
+				for id in token_set {
+					let token = &self.tokens[id];
+					value = merge(&value, &token.to_json(self, ReplaceMethod::StaticValues, &None)).unwrap();
+				}
+
+				// Now we make sure the output directory exists, and write the CSS file to disk
+
+				// Split the set name by any /'s in case they are nested but remove the
+				// last portion as this will be the file name not a directory
+				let dir = if let Some((d,_)) = set_name.rsplit_once("/") {
+					d
+				} else {
+					""
+				};
+
+				// Ensure the directories we need exist for token sets
+				fs::create_dir_all([self.output_path.clone(), dir.to_string()].join("/")).unwrap();
+				// Write the json file.
+				let _ = fs::write(format!("{}.json", [self.output_path.to_string(), set_name.to_string()].join("/")), value.to_string());
+			}
 		}
 	}
 }
