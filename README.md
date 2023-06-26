@@ -3,10 +3,7 @@ Consumes Figma Tokens Studio (Formerly Figma Tokens) output files, and serialize
 
 You can, for example, hook Figma Tokens Sync feature up to a GitHub repo, and then have `figtok` run in a GH action. Then on each update you get the updated CSS files outputted to a particular location. This would enable you to update styles in Figma, push changes from the UI, and have the updates automatically propagate to your live site/app/whatever.
 
-> This project is in a super-WIP state currently and probably won't work for you. It's only really guaranteed to work with Figma Tokens Pro, and if you use the "multiple files" option that splits your tokens into separate json files in directories instead of one huge json file. (see TODOs below.)
-
 ### Gotchas
-- If you're not using Figma Tokens "Themes," and just have Token Sets, you need to remember to import all of the necessary css files so that the variable-based values still work. (i.e. if you have a "light" set that also depends on some "global" set tokens, you need to also @import the global set for the light set to work properly.)
 - If you use any math operators in your tokens, you need to make sure you have a whitespace character either side of the operator when you define the token (i.e. `{base-size} * {font-scale}` not `{base-size}*{font-scale}` or `{base-size}* {font-scale}` etc.)
 
 ## Installation
