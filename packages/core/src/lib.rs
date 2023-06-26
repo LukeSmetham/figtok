@@ -6,10 +6,6 @@ pub mod serialize;
 pub mod load;
 mod log;
 
-use std::{fs, io};
-use merge_struct::merge;
-
-use serde_json::json;
 use tokens::{
 	Tokens, 
 	TokenSets, 
@@ -18,7 +14,7 @@ use tokens::{
 	ReplaceMethod,
 	regex::{REGEX_HB},
 	utils::css_stringify,
-	TokenStore, TokenSet
+	TokenStore,
 };
 use regex::Captures;
 
@@ -69,7 +65,7 @@ impl TokenStore for Figtok {
 							t.value(self, replace_method, true, theme)
 						} else {
 							// No token with a matching name was found.
-							// reference.clone()
+
 							// TODO: Should we panic here instead? Wondering if it\s better to fail and let the user know that there is a token missing...
 							// TODO: Returning "BROKEN_REF" is closer to the behavior with ReplaceMethod:CssVariables as if the ref is broken, the css will still be output, but won't work in practice.
 							String::from("BROKEN_REF")

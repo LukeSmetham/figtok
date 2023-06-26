@@ -1,10 +1,5 @@
 use std::ops::{Deref, DerefMut};
 use std::slice::Iter;
-use merge_struct::merge;
-
-use serde_json::json;
-
-use crate::{ReplaceMethod, TokenStore, Token};
 
 /// A TokenSet stores a Vec of Token IDs, these Tokens are stored in the Figtok TokenStore
 /// and can therefore be accessed by iterating over the ids.
