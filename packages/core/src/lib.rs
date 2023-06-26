@@ -6,7 +6,6 @@ pub mod load;
 mod log;
 
 use std::{fs, io};
-use std::error::Error;
 
 use tokens::{
 	Tokens, 

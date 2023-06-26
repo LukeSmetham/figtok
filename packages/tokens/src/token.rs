@@ -88,7 +88,6 @@ impl Token {
         value
     }
 
-	// TODO: Test this.
 	pub fn serialize(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
 		match self {
 			Token::Standard(_) | Token::Shadow(_) => {
