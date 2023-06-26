@@ -24,12 +24,6 @@ struct Args {
 fn main() {
     let args = Args::parse();
 
-	// let serializer: Box<dyn Serializer> = match args.format.as_str() {
-	// 	"css" => Box::new(CssSerializer::new()),
-	// 	"json" => Box::new(JsonSerializer::new()),
-	// 	f => panic!("Unsupported output format {}", f)
-	// };
-
 	// Check output directory exists, and destroy it if truthy so we can clear any existing output files.
 	if Path::new(&args.output).is_dir() {
 		fs::remove_dir_all(&args.output).unwrap();
@@ -47,9 +41,7 @@ fn main() {
 
 	let figtok = Figtok::new(tokens, token_sets, themes, &args.output);
 
-	if let Err(e) = figtok.serialize() {
-		panic!("Something went wrong: {}", e)
-	}
+	figtok.serialize();
 
 	log!("Done! Check {} for the built files.", figtok.output_path);
 }

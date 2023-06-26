@@ -5,7 +5,7 @@ extern crate serde_json;
 pub mod load;
 mod log;
 
-use std::fs;
+use std::{fs, io};
 use std::error::Error;
 
 use tokens::{
@@ -37,78 +37,95 @@ impl Figtok {
 		}
     }
 
-	pub fn serialize(&self) -> Result<(), Box<dyn Error>> {
-		if !self.themes.is_empty() {
-			log!("Detected {} themes...", self.themes.len());
+	/// Writes the CSS strings to a file. file_name should not include the extension (.css)
+	fn write_to_css_file(&self, file_name: String, variables: String, styles: String) -> io::Result<()> {
+		fs::write(
+			format!("{}.css", file_name), 
+			format!(":root{{{}}}\n{}", variables, styles)
+		)
+	}
 
-			for (name, sets) in &self.themes {
-				log!("Generating Theme: {}", name);
+	fn serialize_themes(&self) {
+		for (name, sets) in &self.themes {
+			log!("Generating Theme: {}", name);
 
-				let mut variables = String::new();
-				let mut classes = String::new();
+			let mut variables = String::new();
+			let mut classes = String::new();
 
-				// ! Why? Can we not just filter on !== disabled and serialize all at once?
-				let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").map(|(k, _)| k).collect::<Vec<&String>>();
-				let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").map(|(k, _)| k).collect::<Vec<&String>>();
+			// ! Why? Can we not just filter on !== disabled and serialize all at once?
+			// Need to ensure the source sets are processed first?
+			let source_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "source").map(|(k, _)| k).collect::<Vec<&String>>();
+			let enabled_sets = sets.into_iter().filter(|(_, v)| v.as_str() == "enabled").map(|(k, _)| k).collect::<Vec<&String>>();
 
-				for set_name in source_sets {
-					let token_set: &TokenSet  = &self.token_sets[set_name];
+			for set_name in source_sets {
+				let token_set: &TokenSet  = &self.token_sets[set_name];
 
-					let output = token_set.serialize(self, &Some(name.clone()));
-					variables.push_str(&output.0);
-					classes.push_str(&output.1);
-				}
-
-				for set_name in enabled_sets {
-					let token_set: &TokenSet  = &self.token_sets[set_name];
-
-					let output = token_set.serialize(self, &Some(name.clone()));
-					variables.push_str(&output.0);
-					classes.push_str(&output.1);
-				}
-
-				// Write the file.
-				let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
-
-				let _ = fs::write(
-					format!("{}.css", [self.output_path.to_string(), name_parts.join("-")].join("/")),
-					format!(":root{{{}}}\n{}", variables, classes),
-				);
-			}
-		} else {
-			log!("Detected {} token sets...", self.token_sets.len());
-			for (set_name, token_set) in &self.token_sets {
-				log!("Generating Token Set: {}", set_name);
-
-				let mut variables = String::new();
-				let mut classes = String::new();
-
-				let output = token_set.serialize(self, &None);
+				let output = token_set.serialize(self, &Some(name.clone()));
 				variables.push_str(&output.0);
 				classes.push_str(&output.1);
-
-				// Write the file.
-
-				// Split the set name by any /'s in case they are nested but remove the
-				// last portion as this will be the file name not a directory
-				let dir = if let Some((d, _)) = set_name.rsplit_once("/") {
-					d
-				} else {
-					""
-				};
-
-				// Ensure the directories we need exist for token sets
-				fs::create_dir_all(vec![self.output_path.clone(), dir.to_string()].join("/"))?;
-
-				// Write the css file.
-				let _ = fs::write(
-					format!("{}.css", [self.output_path.to_string(), set_name.to_string()].join("/")), 
-					format!(":root{{{}}}\n{}", variables, classes)
-				);
 			}
-		}
 
-		Ok(())
+			for set_name in enabled_sets {
+				let token_set: &TokenSet  = &self.token_sets[set_name];
+
+				let output = token_set.serialize(self, &Some(name.clone()));
+				variables.push_str(&output.0);
+				classes.push_str(&output.1);
+			}
+
+			let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
+
+			// Write the css file.
+			let _ = self.write_to_css_file(
+				[self.output_path.to_string(), name_parts.join("-")].join("/"),
+				variables,
+				classes
+			);
+		}
+	}
+
+	fn serialize_token_sets(&self) {
+		// create a .css file for every token set
+		for (set_name, token_set) in &self.token_sets {
+			log!("Generating Token Set: {}", set_name);
+
+			let mut variables = String::new();
+			let mut classes = String::new();
+
+			let output = token_set.serialize(self, &None);
+			variables.push_str(&output.0);
+			classes.push_str(&output.1);
+
+			// Write the file.
+
+			// Split the set name by any /'s in case they are nested but remove the
+			// last portion as this will be the file name not a directory
+			let dir = if let Some((d, _)) = set_name.rsplit_once("/") {
+				d
+			} else {
+				""
+			};
+
+			// Ensure the directories we need exist for the token set
+			fs::create_dir_all(vec![self.output_path.clone(), dir.to_string()].join("/")).unwrap();
+
+			// Write the css file.
+			let _ = self.write_to_css_file(
+				[self.output_path.to_string(), set_name.to_string()].join("/"),
+				variables,
+				classes
+			);
+		}
+	}
+
+	pub fn serialize(&self) {
+		if !self.themes.is_empty() {
+			log!("Detected {} themes...", self.themes.len());
+			self.serialize_themes();
+		} else {
+			log!("Detected {} token sets...", self.token_sets.len());
+			self.serialize_token_sets();
+		}
 	}
 }
 
