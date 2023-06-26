@@ -1,5 +1,8 @@
 use std::ops::{Deref, DerefMut};
 use std::slice::Iter;
+use merge_struct::merge;
+
+use serde_json::json;
 
 use crate::{ReplaceMethod, TokenStore, Token};
 
@@ -10,29 +13,6 @@ pub struct TokenSet(pub Vec<String>);
 impl TokenSet {
 	pub fn new(tokens: Vec<String>) -> Self {
 		TokenSet(tokens)
-	}
-
-	/// The serialize method of a TokenSet returns a tuple of string, one containing all of the variables,
-	/// and the other containing any classes that were created as a result of compositional tokens.
-	pub fn serialize(&self, store: &dyn TokenStore, theme: &Option<String>) -> (String, String) {
-		let mut variables = String::new();
-		let mut classes = String::new();
-
-		for id in &self.0 {
-			let token = store.token(id);
-			let token_value = &token.serialize(store, ReplaceMethod::CssVariables, theme);
-
-			match token {
-				Token::Standard(_) | Token::Shadow(_) => {
-					variables.push_str(token_value);
-				}
-				Token::Composition(_) => {
-					classes.push_str(token_value);
-				}
-			}
-		}
-
-		(variables, classes)
 	}
 }
 

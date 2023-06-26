@@ -478,6 +478,7 @@ dependencies = [
  "colors-transform",
  "convert_case",
  "css_math",
+ "merge-struct",
  "once_cell",
  "regex",
  "serde",

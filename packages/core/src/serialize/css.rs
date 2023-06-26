@@ -1,7 +1,7 @@
 use std::{default::Default, fs, io};
 
-use crate::{Figtok, log};
-use tokens::{TokenSet};
+use crate::{Figtok, TokenStore, log};
+use tokens::{TokenSet, Token};
 
 use super::{
 	Serializer,
@@ -30,6 +30,27 @@ impl CssSerializer {
 		CssSerializer {}
 	}
 
+	fn serialize_token_set(&self, store: &Figtok, token_set: &TokenSet, theme_name: &Option<String>) -> (String, String) {
+		let mut variables = String::new();
+		let mut styles = String::new();
+
+		for id in token_set {
+			let token = store.token(id);
+			let token_value = &token.serialize(store, tokens::ReplaceMethod::CssVariables, theme_name);
+
+			match token {
+				Token::Standard(_) | Token::Shadow(_) => {
+					variables.push_str(token_value);
+				}
+				Token::Composition(_) => {
+					styles.push_str(token_value);
+				}
+			}
+		}
+
+		(variables, styles)
+	}
+
 	pub fn serialize_themes(&self, store: &Figtok) {
 		log!("Detected {} themes...", store.themes.len());
 
@@ -40,18 +61,19 @@ impl CssSerializer {
 			let mut classes = String::new();
 
 			for set_name in sets.into_iter().filter(|(_, v)| v.as_str() != "disabled").map(|(k, _)| k).collect::<Vec<&String>>() {
-				let token_set: &TokenSet  = &store.token_sets[set_name];
+				let token_set: &TokenSet = &store.token_sets[set_name];
 
-				let output = token_set.serialize(store, &Some(name.clone()));
+				let output = self.serialize_token_set(store, token_set, &Some(name.clone()));
 				variables.push_str(&output.0);
 				classes.push_str(&output.1);
 			}
 
-			let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
-
 			// Write the css file.
+			let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
+			let file_name = [store.output_path.to_string(), name_parts.join("-")].join("/");
+
 			let _ = self.write_file(
-				[store.output_path.to_string(), name_parts.join("-")].join("/"),
+				file_name,
 				format!(":root{{{}}}\n{}", variables, classes)
 			);
 		}
@@ -64,15 +86,8 @@ impl CssSerializer {
 		for (set_name, token_set) in &store.token_sets {
 			log!("Generating Token Set: {}", set_name);
 
-			let mut variables = String::new();
-			let mut classes = String::new();
-
-			let output = token_set.serialize(store, &None);
-			variables.push_str(&output.0);
-			classes.push_str(&output.1);
-
-			// Write the file.
-
+			let (variables, styles) = self.serialize_token_set(store, token_set, &None);
+			
 			// Split the set name by any /'s in case they are nested but remove the
 			// last portion as this will be the file name not a directory
 			let dir = if let Some((d, _)) = set_name.rsplit_once("/") {
@@ -85,9 +100,10 @@ impl CssSerializer {
 			fs::create_dir_all(vec![store.output_path.clone(), dir.to_string()].join("/")).unwrap();
 
 			// Write the css file.
+			let file_name = [store.output_path.to_string(), set_name.to_string()].join("/");
 			let _ = self.write_file(
-				[store.output_path.to_string(), set_name.to_string()].join("/"),
-				format!(":root{{{}}}\n{}", variables, classes)
+				file_name,
+				format!(":root{{{}}}\n{}", variables, styles)
 			);
 		}
 	}

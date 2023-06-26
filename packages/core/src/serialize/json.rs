@@ -2,7 +2,7 @@ use std::{default::Default, fs, io};
 use merge_struct::merge;
 use serde_json::json;
 
-use crate::{Figtok, log};
+use crate::{Figtok, TokenStore, log};
 use tokens::{ReplaceMethod, TokenSet};
 
 use super::{
@@ -41,7 +41,11 @@ impl JsonSerializer {
 			for set_name in sets.into_iter().filter(|(_, v)| v.as_str() != "disabled").map(|(k, _)| k).collect::<Vec<&String>>() {
 				let token_set: &TokenSet  = &store.token_sets[set_name];
 
-				value = merge(&value, &token_set.to_json(store, &Some(name.clone()))).unwrap();
+				for id in token_set {
+					let token = store.token(id);
+
+					value = merge(&value, &token.to_json(store, ReplaceMethod::StaticValues, &Some(name.clone()))).unwrap();
+				};
 			}
 
 			// Write the css file.
@@ -57,12 +61,13 @@ impl JsonSerializer {
 		log!("Detected {} token sets...", store.token_sets.len());
 
 		for (set_name, token_set) in &store.token_sets {
-			let mut value = serde_json::from_str("{}").unwrap();
+			let mut value = json!({});
 
 			for id in token_set {
-				let token = &store.tokens[id];
+				let token = store.token(id);
+
 				value = merge(&value, &token.to_json(store, ReplaceMethod::StaticValues, &None)).unwrap();
-			}
+			};
 
 			// Now we make sure the output directory exists, and write the CSS file to disk
 
