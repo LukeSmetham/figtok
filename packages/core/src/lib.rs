@@ -2,10 +2,12 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_json;
 
-pub mod serialize;
-pub mod load;
+mod serialize;
+mod load;
 mod log;
 
+pub use load::load;
+pub use serialize::{Serializer, CssSerializer, JsonSerializer};
 use tokens::{
 	Tokens, 
 	TokenSets, 
@@ -34,6 +36,10 @@ impl Figtok {
             themes,
 		}
     }
+
+	pub fn serialize(&self, serializer: Box<dyn Serializer>) {
+		serializer.serialize(self)
+	}
 }
 
 impl TokenStore for Figtok {

@@ -1,7 +1,12 @@
 mod log;
 
-use figtok::serialize::{Serializer, CssSerializer, JsonSerializer};
-use figtok::{Figtok, load::load};
+use figtok::{
+	Figtok, 
+	load,
+	Serializer, 
+	CssSerializer, 
+	JsonSerializer
+};
 use clap::Parser;
 use std::fs;
 use std::path::Path;
@@ -48,7 +53,7 @@ fn main() {
 
 	let figtok = Figtok::new(tokens, token_sets, themes, &args.output);
 
-	serializer.serialize(&figtok);
+	figtok.serialize(serializer);
 
 	log!("Done! Check {} for the built files.", figtok.output_path);
 }
