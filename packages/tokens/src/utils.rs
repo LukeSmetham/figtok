@@ -8,17 +8,11 @@ pub fn css_stringify(s: &String) -> String {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use test_case::test_case;
 
-	#[test]
-	fn dot_notation_to_css_compat() {
-		assert_eq!(
-			css_stringify(&"global.color.purple.100".to_string()),
-			String::from("global-color-purple-100")
-		);
-		
-		assert_eq!(
-			css_stringify(&"text.headings.h1.fontSize".to_string()),
-			String::from("text-headings-h1-font-size")
-		);
+	#[test_case("global.color.purple.100", "global-color-purple-100")]
+	#[test_case("text.headings.h1.fontSize", "text-headings-h1-font-size")]
+	fn dot_notation_to_css_compat(input: &str, expected: &str) {
+		assert_eq!(css_stringify(&input.to_string()), expected.to_string());
 	}
 }

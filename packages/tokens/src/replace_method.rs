@@ -1,3 +1,4 @@
+/// An enum used to define the two methods of serialization.
 #[derive(Clone, Copy)]
 pub enum ReplaceMethod {
 	/// Convert the token into a css var() statement, pointing to a css variable somewhere else in the system.

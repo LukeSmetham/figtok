@@ -46,6 +46,7 @@ pub enum TokenKind {
     Other,
 }
 impl ToString for TokenKind {
+	/// Handles the mapping of Self to css property name for use in serialization.
     fn to_string(&self) -> String {
         match self {
             TokenKind::BorderRadius => "border-radius",

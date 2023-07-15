@@ -9,8 +9,8 @@ use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
 /// A TokenDefinition stores the raw data of a token, with a generic property denoting the type of token (Standard, Shadow, Composition, etc.)
-/// Most tokens are expressed as `Standard`, although `Shadow` and `Composition` tokens require different serialization methods, and therefore
-/// we can impl `get_value` for each type. 
+/// Most tokens are expressed as `Standard` tokens - where the value is a simple `String`, although `Shadow` and `Composition` tokens require 
+/// different serialization methods, and therefore we can impl `get_value` for each type. 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound(deserialize = "T: DeserializeOwned"))]
 pub struct TokenDefinition<T> {
@@ -33,11 +33,11 @@ impl TokenDefinition<String> {
         let value = if REGEX_HB.is_match(&self.value) {
 			// if so, follow the reference:
 			let mut v = store.enrich(self.value.to_string(), replace_method, &theme);
-			
+
 			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
 			// we must also insure we aren't nested so that values that are multiple refs deep don't
 			// get wrapped n times.
-			if self.kind == TokenKind::Color && !self.value.starts_with("rgb") && !nested {
+			if self.kind == TokenKind::Color && !nested {
 				v = format!("rgb({})", v);
 			}
 			
@@ -57,7 +57,7 @@ impl TokenDefinition<String> {
 				self.value.clone()
 			}
         };
-
+		println!("{}: {}", &self.name, &value);
         value
     }
 }
