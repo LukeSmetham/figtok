@@ -118,7 +118,7 @@ mod tests {
     use matches::assert_matches;
 	use test_case::test_case;
 
-     #[test_case("5")]
+    #[test_case("5")]
     #[test_case("10")]
     #[test_case("1.12")]
     #[test_case("100")]

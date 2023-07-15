@@ -1,4 +1,4 @@
-use crate::token_kind::{TokenKind};
+use crate::token_kind::TokenKind;
 use crate::shadow_value::{ShadowLayerKind, ShadowValue};
 use crate::replace_method::ReplaceMethod;
 use crate::regex::REGEX_HB;
@@ -8,6 +8,9 @@ use colors_transform::{Color, Rgb};
 use serde_derive::{Deserialize, Serialize};
 use serde::de::DeserializeOwned;
 
+/// A TokenDefinition stores the raw data of a token, with a generic property denoting the type of token (Standard, Shadow, Composition, etc.)
+/// Most tokens are expressed as `Standard`, although `Shadow` and `Composition` tokens require different serialization methods, and therefore
+/// we can impl `get_value` for each type. 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(bound(deserialize = "T: DeserializeOwned"))]
 pub struct TokenDefinition<T> {
@@ -61,7 +64,7 @@ impl TokenDefinition<String> {
 
 impl TokenDefinition<ShadowValue> {
 	/// Shadow values can be expressed as a single string. Because of this it can take the Vec<ShadowLayer>
-	/// from serializing the JSON, and deref + concatenate it all together into a single css variable. 
+	/// produced from serializing the origin JSON, and deref + concatenate it all together into a single css variable. 
     pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
         let mut value: Vec<String> = vec![];
 

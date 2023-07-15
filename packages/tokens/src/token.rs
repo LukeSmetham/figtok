@@ -173,7 +173,7 @@ mod test {
 		}
 		
 		#[test]
-		fn standard_reference() {
+		fn color_reference() {
 			// Define a token that we will reference later on
 			let ref_definition = TokenDefinition {
 				id: String::from("global.ref.grey.0"),
@@ -219,15 +219,8 @@ mod test {
 		}
 
 		#[test]
-		fn shadow() { todo!() }
+		fn rgb_color_reference() {
 
-		#[test]
-		fn shadow_reference() { todo!() }
-
-		#[test]
-		fn composition() { todo!() }
-
-		#[test]
-		fn composition_reference() { todo!() }
+		}
 	}
 }

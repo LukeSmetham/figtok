@@ -1,6 +1,15 @@
-use serde_derive::{Deserialize};
+use serde_derive::Deserialize;
 use serde::{Serialize, Serializer};
 
+/// Each individual token type, usually mapping 1:1 to a css property with the exception of `Composition` and `Dimension`
+/// 
+/// `Composition` tokens store their value as a nested `serde_json::Value`, and serialize to class definitions as they can contain 
+/// multiple values and token references that should all be applied at once. 
+/// 
+/// For Example, you may define a composition token for a "glass" effect, where your `surface` color, border-color 
+/// and border-width, and backdrop-blur are all applied as a single class.
+/// 
+/// Dimension tokens are unique in that they contain a value, as well as the desired "dimension" (i.e. `rem`, `em`, `%`, `px`, `vw`, etc.)
 #[derive(Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum TokenKind {
     #[serde(alias = "borderRadius")]
