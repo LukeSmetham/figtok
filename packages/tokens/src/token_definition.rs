@@ -27,70 +27,61 @@ pub struct TokenDefinition<T> {
 }
 
 impl TokenDefinition<String> {
-	// Follows references and returns a string value - this is super simple and applies to most tokens other than Composition, Typography and Shadow.
     pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
-        // Check if the original_value contains handlebar syntax with a reference to another token.
         let value = if REGEX_HB.is_match(&self.value) {
-			// if so, follow the reference:
-			let mut v = store.enrich(self.value.to_string(), replace_method, &theme);
+            let mut v = store.enrich(self.value.to_string(), replace_method, &theme);
 
-			// If the token is a color ref token that has a handlebar reference wrap it in rgb()
-			// we must also insure we aren't nested so that values that are multiple refs deep don't
-			// get wrapped n times.
-			if self.kind == TokenKind::Color && !nested {
-				v = format!("rgb({})", v);
-			}
-			
-			v
+            if self.kind == TokenKind::Color && !v.starts_with("rgb") && !nested {
+                v = format!("rgb({})", v);
+            }
+
+            v
         } else {
-			// If no reference and we have a color value, convert it to rgb
-			if TokenKind::Color == self.kind {
-					let rgb = Rgb::from_hex_str(&self.value).unwrap();
-					format!(
-						"{}, {}, {}",
-						rgb.get_red(),
-						rgb.get_green(),
-						rgb.get_blue()
-					)
-			} else {
-				// If there is no handlebar reference in the value, just return the value as is.
-				self.value.clone()
-			}
+            if TokenKind::Color == self.kind {
+                Rgb::from_hex_str(&self.value)
+                    .map(|rgb| format!("{}, {}, {}", rgb.get_red(), rgb.get_green(), rgb.get_blue()))
+                    .unwrap_or_else(|_| self.value.clone())  // gracefully handle error
+            } else {
+                self.value.clone()
+            }
         };
-		println!("{}: {}", &self.name, &value);
+
         value
     }
 }
 
 impl TokenDefinition<ShadowValue> {
-	/// Shadow values can be expressed as a single string. Because of this it can take the Vec<ShadowLayer>
-	/// produced from serializing the origin JSON, and deref + concatenate it all together into a single css variable. 
     pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
-        let mut value: Vec<String> = vec![];
+        let mut value = String::new();
 
         for layer in &self.value.0 {
-			let color = if !layer.color.starts_with("rgb") { format!("rgb({})", layer.color) } else { layer.color.clone() };
+            let color = if !layer.color.starts_with("rgb") { format!("rgb({})", layer.color) } else { layer.color.clone() };
+
             match layer.kind {
-                ShadowLayerKind::DropShadow => value.push(format!(
-                    "{}px {}px {}px {}px {}",
+                ShadowLayerKind::DropShadow => value.push_str(&format!(
+                    "{}px {}px {}px {}px {}, ",
                     layer.x, 
-					layer.y, 
-					layer.blur,
-					layer.spread,
-					color
+                    layer.y, 
+                    layer.blur,
+                    layer.spread,
+                    color
                 )),
-                ShadowLayerKind::InnerShadow => value.push(format!(
-                    "inset {}px {}px {}px {}px {}",
+                ShadowLayerKind::InnerShadow => value.push_str(&format!(
+                    "inset {}px {}px {}px {}px {}, ",
                     layer.x, 
-					layer.y, 
-					layer.blur,
-					layer.spread,
-					color
+                    layer.y, 
+                    layer.blur,
+                    layer.spread,
+                    color
                 )),
             };
         }
 
-        store.enrich(value.join(", "), replace_method, &theme)
+        // Remove the trailing comma and space
+        value.pop();
+        value.pop();
+
+        store.enrich(value, replace_method, &theme)
     }
 }
 

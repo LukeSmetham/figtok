@@ -14,7 +14,7 @@ use tokens::{
 	Themes, 
 	Token,
 	ReplaceMethod,
-	regex::{REGEX_HB},
+	regex::REGEX_HB,
 	utils::css_stringify,
 	TokenStore,
 };

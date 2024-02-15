@@ -8,7 +8,7 @@ use crate::token_definition::TokenDefinition;
 use crate::shadow_value::ShadowValue;
 use crate::replace_method::ReplaceMethod;
 use crate::token_store::TokenStore;
-use crate::utils::{css_stringify};
+use crate::utils::css_stringify;
 
 /// The Token enum holds a TokenDefinition<T> and provides an abstraction with getters for the 
 /// properties of a Token (name, id, kind, value.)
@@ -79,8 +79,7 @@ impl Token {
         };
 
 		// Run the token through our css math tokenizer to check if we should
-		// wrap the string in cal() or not.
-		// println!("{}", &value);
+		// wrap the string in calc() or not.
 		if css_math::is_css_math(&value) {
 			value = format!("calc({})", value);
 		}

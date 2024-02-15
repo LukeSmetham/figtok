@@ -11,7 +11,6 @@ pub fn is_css_math(input: &str) -> bool {
     match tokenize(input) {
         Ok(tokens) => validate(&tokens),
         Err(_) => {
-            // println!("[TokenizationError]: {:?}", error);
             false
         }
     }
