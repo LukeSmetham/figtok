@@ -12,7 +12,6 @@ mod test {
 	use test_case::test_case;
 
 	// Handlebars
-
 	#[test_case("{test}")]
 	#[test_case("{ref.purple.1}")]
 	#[test_case("{my.very.deeply.nested.value}")]
