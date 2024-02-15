@@ -3,6 +3,8 @@
 packages/**/target
 target/
 
+build/
+
 # Core
 packages/core/tokens
 packages/core/build

@@ -1,0 +1,13 @@
+{
+  "tokenSetOrder": [
+    "global",
+    "ref",
+    "color/light",
+    "color/dark",
+    "theme/light",
+    "theme/dark",
+    "syntax/adapative",
+    "syntax/fixed",
+    "generic"
+  ]
+}
