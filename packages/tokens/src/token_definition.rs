@@ -91,13 +91,12 @@ mod tests {
 
     mod deserialize {
 		use super::*;
+	use test_case::test_case;
 
-		#[test]
-		fn can_be_deserialized_from_str() {
+		#[test_case("{\"value\":\"24px\",\"kind\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}" ; "Example Definition #1")]
+		fn can_be_deserialized_from_str(def: &str) {
 			// In practice we use std to read the string from JSON files on disk.
-			let token_definition  = r#"{"value":"24px","kind":"fontSizes","name":"fontSize.0","id":"fontSize.0"}"#;
-
-			let token: TokenDefinition<String> = serde_json::from_str(token_definition).unwrap();
+			let token: TokenDefinition<String> = serde_json::from_str(def).unwrap();
 
 			assert_eq!(token.value, String::from("24px"));
 			assert_eq!(token.kind.to_string(), TokenKind::FontSize.to_string());
