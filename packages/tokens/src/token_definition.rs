@@ -52,8 +52,11 @@ impl TokenDefinition<String> {
 
 impl TokenDefinition<ShadowValue> {
     pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+        // Initialize a new string to hold the value
         let mut value = String::new();
 
+        // The TokenDefinition for a shadow token value is a Vec<ShadowLayer>, we iterate through these
+        // formatting them as valid CSS shadows, and pushing them into the string.
         for layer in &self.value.0 {
             let color = if !layer.color.starts_with("rgb") { format!("rgb({})", layer.color) } else { layer.color.clone() };
 
@@ -77,7 +80,8 @@ impl TokenDefinition<ShadowValue> {
             };
         }
 
-        // Remove the trailing comma and space
+        // Remove the trailing comma and space - we bake in the ", " as a separator between layers of shadows, 
+        // but then must remove the trailing ", " on the final value.
         value.pop();
         value.pop();
 
@@ -91,12 +95,11 @@ mod tests {
 
     mod deserialize {
 		use super::*;
-	use test_case::test_case;
 
-		#[test_case("{\"value\":\"24px\",\"kind\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}" ; "Example Definition #1")]
-		fn can_be_deserialized_from_str(def: &str) {
+        #[test]
+		fn can_be_deserialized_from_str() {
 			// In practice we use std to read the string from JSON files on disk.
-			let token: TokenDefinition<String> = serde_json::from_str(def).unwrap();
+			let token: TokenDefinition<String> = serde_json::from_str("{\"value\":\"24px\",\"kind\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}").unwrap();
 
 			assert_eq!(token.value, String::from("24px"));
 			assert_eq!(token.kind.to_string(), TokenKind::FontSize.to_string());
