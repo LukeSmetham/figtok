@@ -8,7 +8,7 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
         .zip(t.iter())
         .collect();
 
-    // Use a fold on the tokens iterator to count parentheses. Parens should alwyas be closed out so if the value
+    // Use a fold on the tokens iterator to count parentheses. Parens should always be closed out so if the value
     // is non-zero then we have an invalid string.
     let parentheses = tokens.iter().fold(0, |count, (_, current)| match current {
         Token::LeftParen => count + 1,
@@ -20,20 +20,73 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
         return Err(ValidationError::MismatchedParentheses);
     }
 
-    let operators = t.iter().any(|c| matches!(c, Token::Operator(_)));
+    // If there are no operators, then we don't have a math statement.
+    let operators: bool = t.iter().any(|c| matches!(c, Token::Operator(_)));
 
     if !operators {
         return Err(ValidationError::NoOperators);
+    }
+
+    let mut unit_count = 0;
+    let mut has_div_or_mul = false;
+    let mut last_operator: Option<&str> = None;
+    let mut last_unit: Option<&str> = None;
+
+    for token in t {
+        match token {
+            Token::Unit(unit) => {
+                // If the last operator was a "/" and there is already a unit in the statement
+                // then this is invalid, the right-hand side of a division statement should never
+                // have a unit.
+                if matches!(last_operator, Some("/")) {
+                    return Err(ValidationError::InvalidDivisionRHS)
+                }
+                
+                // If the last operator was a "*" and there is already a unit in the statement
+                // then this is invalid, one side of a multiplication statement should be a 
+                // unitless number.
+                if matches!(last_operator, Some("*")) && unit_count > 0 {
+                    return Err(ValidationError::MultiplicationWithUnits)
+                }
+
+                if last_unit.is_some() {
+                    if !matches!(last_unit, Some(unit)) {
+                        return Err(ValidationError::MixedUnitArithmetic)
+                    }
+                    last_unit = None;
+                } else {
+                    last_unit = Some(unit);
+                }
+
+                unit_count += 1
+            },
+            Token::Operator(op) => {
+                if op == "/" || op == "*" {
+                    has_div_or_mul = true
+                }
+
+                last_operator = Some(op);
+            }
+            _ => {}
+        }
+    }
+
+    if has_div_or_mul && unit_count > 1 {
+        return Err(ValidationError::InvalidDivMulOperation)
     }
 
     for (prev, current) in tokens.iter() {
         // validate based on the previous token
         // Most useful for check a Token follows another kind of Token etc.
         match prev {
-            Some(Token::Operator(_)) => {}
+            Some(Token::Operator(op)) => {
+                if op == "/" && matches!(current, Token::Number(num) if num == "0") {
+                    return Err(ValidationError::DivisionByZero)
+                }
+            }
             Some(Token::Number(_)) => {
                 // Check that only a unit or whitespace follow a number.
-                if !matches!(current, Token::Unit(_)) {
+                if !matches!(current, Token::Unit(_) | Token::Operator(_)) {
                     return Err(ValidationError::InvalidWhitespace);
                 }
             }
@@ -114,6 +167,35 @@ mod test {
         use test_case::test_case;
 
         #[test_case(vec![Token::Unit(String::from("px")), Token::Unit(String::from("rem"))] ; "Disallow consecutive units")]
+        fn invalid(tokens: Vec<Token>) {
+            let res = validator(&tokens);
+            assert!(res.is_err());
+        }
+    }
+
+    mod operators {
+        use super::*;
+
+        use test_case::test_case;
+
+        #[test_case(vec![Token::Number(String::from("12")), Token::Operator(String::from("+")), Token::Number(String::from("1"))] ; "Numbers only without units")]
+        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Number(String::from("1"))])]
+        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("%")), Token::Operator(String::from("*")), Token::Number(String::from("2"))] ; "Multiplication where one operand has a unit")]
+        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("px")), Token::Operator(String::from("/")), Token::Number(String::from("10"))] ; "Division where one operand has a unit")]
+        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("*")), Token::Number(String::from("2")), Token::Unit(String::from("rem"))] ; "Multiplication where one operand has a unit #2")]
+        #[test_case(vec![Token::Number(String::from("42")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Variable(String::from("var(--base)"))] ; "Multiplication with a variable on one side")]
+        #[test_case(vec![Token::Number(String::from("10")), Token::Unit(String::from("%")), Token::Operator(String::from("/")), Token::Variable(String::from("var(--base)"))] ; "Division with a variable on one side")]
+        fn valid(tokens: Vec<Token>) {
+            let res = validator(&tokens);
+            assert!(res.is_ok())
+        }
+
+        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("/")), Token::Number(String::from("0"))] ; "Division by Zero")]
+        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("%")), Token::Number(String::from("50")), Token::Unit(String::from("px"))] ; "Missing Operator")]
+        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Number(String::from("1")), Token::Unit(String::from("px"))] ; "Multiplication where both operands have units")]
+        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("%")), Token::Operator(String::from("/")), Token::Number(String::from("1")), Token::Unit(String::from("rem"))] ; "Division where both operands have units")]
+        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("/")), Token::Number(String::from("10")), Token::Unit(String::from("%"))] ; "Division where RHS operand has a unit")]
+        #[test_case(vec![Token::Variable(String::from("var(--base)")), Token::Operator(String::from("/")), Token::Number(String::from("10")), Token::Unit(String::from("%"))] ; "Division where RHS operand has a unit #2")]
         fn invalid(tokens: Vec<Token>) {
             let res = validator(&tokens);
             assert!(res.is_err());
