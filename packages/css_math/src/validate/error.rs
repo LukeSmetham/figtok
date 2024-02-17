@@ -1,16 +1,16 @@
 #[derive(Debug, PartialEq)]
 pub enum ValidationError {
-    DivisionByZero,
-    IncompleteExpression,
-    InvalidDivisionRHS,
-	InvalidToken,
-	InvalidWhitespace,
+    DivisionByZero(String),
+    IncompleteExpression(String),
+    InvalidDivisionRHS(String),
+	InvalidToken(String),
+	InvalidWhitespace(String),
 	InvalidVariable(String),
 	InvalidNumber(String),
-	InvalidDivMulOperation,
-    InvalidSyntax,
-	NoOperators,
-	MismatchedParentheses,
-    MixedUnitArithmetic,
-    MultiplicationWithUnits
+	InvalidDivMulOperation(String),
+    InvalidSyntax(String),
+	NoOperators(String),
+	MismatchedParentheses(String),
+    MixedUnitArithmetic(String),
+    MultiplicationWithUnits(String)
 }

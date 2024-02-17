@@ -1,6 +1,26 @@
 use super::error::ValidationError;
 use crate::token::Token;
 
+fn tokens_to_string(tokens: &[Token]) -> String {
+    let mut result = String::new();
+    for token in tokens {
+        match token {
+            Token::Number(num) => result.push_str(num),
+            Token::Unit(unit) => result.push_str(unit),
+            Token::Operator(op) => {
+                // Optionally add spaces around operators for readability
+                result.push(' ');
+                result.push_str(op);
+                result.push(' ');
+            },
+            Token::LeftParen => result.push('('),
+            Token::RightParen => result.push(')'),
+            Token::Variable(var) => result.push_str(var),
+        }
+    }
+    result
+}
+
 pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
     let parentheses = t.iter().fold(0, |count, current| match current {
         Token::LeftParen => count + 1,
@@ -9,14 +29,14 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
     });
 
     if parentheses != 0 {
-        return Err(ValidationError::MismatchedParentheses);
+        return Err(ValidationError::MismatchedParentheses(tokens_to_string(t)));
     }
 
     // If there are no operators, then we don't have a math statement.
     let operators: bool = t.iter().any(|c| matches!(c, Token::Operator(_)));
 
     if !operators {
-        return Err(ValidationError::NoOperators);
+        return Err(ValidationError::NoOperators(tokens_to_string(t)));
     }
 
     // Initialize context stack to keep track of operations, and nested operations,
@@ -42,7 +62,7 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
                 ctx_stack.pop();
                 let stack_len = ctx_stack.len();
                 if stack_len == 0 {
-                    return Err(ValidationError::MismatchedParentheses)
+                    return Err(ValidationError::MismatchedParentheses(tokens_to_string(t)))
                 }
 
                 // For Right paren, we push the token to the context after removing the previous from the stack
@@ -60,7 +80,7 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
                 }
 
                 if matches!(context.2, None) {
-                    return Err(ValidationError::InvalidSyntax);
+                    return Err(ValidationError::InvalidSyntax(tokens_to_string(t)));
                 }
 
                 context.2 = Some(token);
@@ -70,18 +90,18 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
 
                 // If we hit a unit, and we didn't previously have a number then error
                 if !matches!(context.2, Some(Token::Number(_))) {
-                    return Err(ValidationError::InvalidSyntax)
+                    return Err(ValidationError::InvalidSyntax(tokens_to_string(t)))
                 }
 
                 // If in a division operation, there should be no units on the RHS
                 if matches!(context.0, Some("/")) {
-                    return Err(ValidationError::InvalidDivisionRHS);
+                    return Err(ValidationError::InvalidDivisionRHS(tokens_to_string(t)));
                 }
 
                 // If in a multiplication operation and there has already been a unit
                 // there should be no more units in the operation
                 if matches!(context.0, Some("*")) && context.1.is_some() {
-                    return Err(ValidationError::MultiplicationWithUnits);
+                    return Err(ValidationError::MultiplicationWithUnits(tokens_to_string(t)));
                 }
 
                 context.1 = Some(unit);
@@ -92,16 +112,16 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
 
                 // Number should only ever follow None or an operator.
                 if !matches!(context.2, None | Some(Token::Operator(_))) {
-                    return Err(ValidationError::InvalidSyntax)
+                    return Err(ValidationError::InvalidSyntax(tokens_to_string(t)))
                 }
 
                 if matches!(context.0, Some("/")) && num == "0" {
-                    return Err(ValidationError::DivisionByZero)
+                    return Err(ValidationError::DivisionByZero(tokens_to_string(t)))
                 }
 
                 // Floats should always include the trailing digits (Number should never end in ".")
                 if num.ends_with(".") {
-                    return Err(ValidationError::InvalidNumber(num.to_string()));
+                    return Err(ValidationError::InvalidNumber(tokens_to_string(t)));
                 }
 
                 context.2 = Some(token);
@@ -110,7 +130,7 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
                 let context = ctx_stack.last_mut().unwrap();
 
                 if !value.starts_with("var(--") || !value.ends_with(")") {
-                    return Err(ValidationError::InvalidVariable(value.to_string()))
+                    return Err(ValidationError::InvalidVariable(tokens_to_string(t)))
                 }
 
                 context.2 = Some(token);
@@ -119,7 +139,7 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
     }
 
     if ctx_stack.len() > 1 || matches!(ctx_stack[0].2, Some(Token::Operator(_))) {
-        return Err(ValidationError::IncompleteExpression)
+        return Err(ValidationError::IncompleteExpression(tokens_to_string(t)))
     }
 
     Ok(())
@@ -183,7 +203,6 @@ mod test {
     ]; "nested division and addition")]
     fn valid(input: &[Token]) {
         let result = validator(input);
-        println!("{:?}", result);
         assert!(result.is_ok())
     }
 
