@@ -1,7 +1,9 @@
 [package]
-name = "tokens"
+name = "figtok_tokens"
 version = "0.1.0"
 edition = "2021"
+description = "Utility for handling different token types for Figtok"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

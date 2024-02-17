@@ -151,13 +151,28 @@ name = "figtok"
 version = "0.2.6"
 dependencies = [
  "clap",
+ "figtok_tokens",
  "merge-struct",
  "regex",
  "serde",
  "serde_derive",
  "serde_json",
  "termion",
- "tokens",
+]
+
+[[package]]
+name = "figtok_tokens"
+version = "0.1.0"
+dependencies = [
+ "colors-transform",
+ "convert_case",
+ "css_math",
+ "once_cell",
+ "regex",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "test-case",
 ]
 
 [[package]]
@@ -382,21 +397,6 @@ dependencies = [
  "quote",
  "syn",
  "test-case-core",
-]
-
-[[package]]
-name = "tokens"
-version = "0.1.0"
-dependencies = [
- "colors-transform",
- "convert_case",
- "css_math",
- "once_cell",
- "regex",
- "serde",
- "serde_derive",
- "serde_json",
- "test-case",
 ]
 
 [[package]]

@@ -1,7 +1,7 @@
 use std::{default::Default, fs, io};
 
 use crate::{log, Figtok, TokenStore};
-use tokens::{Token, TokenSet};
+use figtok_tokens::{Token, TokenSet};
 
 use super::Serializer;
 
@@ -37,7 +37,7 @@ impl CssSerializer {
         for id in token_set {
             let token = store.token(id);
             let token_value =
-                &token.serialize(store, tokens::ReplaceMethod::StaticValues, theme_name);
+                &token.serialize(store, figtok_tokens::ReplaceMethod::StaticValues, theme_name);
 
             match token {
                 Token::Standard(_) | Token::Shadow(_) => {

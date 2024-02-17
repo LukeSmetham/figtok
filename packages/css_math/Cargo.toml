@@ -2,6 +2,8 @@
 name = "css_math"
 version = "1.0.0"
 edition = "2021"
+description = "Tokenizes and validates strings as CSS Math statements"
+license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

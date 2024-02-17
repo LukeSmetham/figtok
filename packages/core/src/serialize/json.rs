@@ -3,7 +3,7 @@ use merge_struct::merge;
 use serde_json::json;
 
 use crate::{Figtok, TokenStore, log};
-use tokens::{ReplaceMethod, TokenSet};
+use figtok_tokens::{ReplaceMethod, TokenSet};
 
 use super::{
 	Serializer,

@@ -1,6 +1,6 @@
 use std::collections::{HashMap};
 use serde::de::DeserializeOwned;
-use tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes, TokenSet};
+use figtok_tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes, TokenSet};
 
 
 pub fn parse_themes(source: Vec<serde_json::Value>) -> Themes {

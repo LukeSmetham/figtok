@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 use serde_json::Value;
-use tokens::{TokenSets, Themes, Tokens};
+use figtok_tokens::{TokenSets, Themes, Tokens};
 
 mod parse;
 use parse::{parse_themes, parse_tokens};

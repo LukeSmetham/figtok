@@ -8,7 +8,7 @@ mod log;
 
 pub use load::load;
 pub use serialize::{Serializer, CssSerializer, JsonSerializer};
-use tokens::{
+use figtok_tokens::{
 	Tokens, 
 	TokenSets, 
 	Themes, 
@@ -47,7 +47,7 @@ impl TokenStore for Figtok {
 		&self.tokens[id]
 	}
 
-	fn tokens(&self, theme: &Option<String>) -> Vec<&tokens::Token> {
+	fn tokens(&self, theme: &Option<String>) -> Vec<&figtok_tokens::Token> {
 		if let Some(key) = theme {
 			let active_sets = self.themes.get(key).unwrap();
 			active_sets.keys().map(|set_name| &self.token_sets[set_name]).flatten().map(|token_id| &self.tokens[token_id]).collect()
