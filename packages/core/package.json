@@ -1,6 +1,6 @@
 {
   "name": "figtok",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Takes Figma Tokens JSON output and converts it to valid composable CSS.",
   "main": "start.js",
   "directories": {
