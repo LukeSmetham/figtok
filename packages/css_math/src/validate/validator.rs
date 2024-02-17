@@ -2,15 +2,7 @@ use super::error::ValidationError;
 use crate::token::Token;
 
 pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
-    // convert our token slice into a vec of tuples, containing an optional previous token, and the current token in the iterator.
-    let tokens: Vec<(Option<&Token>, &Token)> = std::iter::once(None)
-        .chain(t.iter().map(Some))
-        .zip(t.iter())
-        .collect();
-
-    // Use a fold on the tokens iterator to count parentheses. Parens should always be closed out so if the value
-    // is non-zero then we have an invalid string.
-    let parentheses = tokens.iter().fold(0, |count, (_, current)| match current {
+    let parentheses = t.iter().fold(0, |count, current| match current {
         Token::LeftParen => count + 1,
         Token::RightParen => count - 1,
         _ => count,
@@ -27,95 +19,107 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
         return Err(ValidationError::NoOperators);
     }
 
-    let mut unit_count = 0;
-    let mut has_div_or_mul = false;
-    let mut last_operator: Option<&str> = None;
-    let mut last_unit: Option<&str> = None;
+    // Initialize context stack to keep track of operations, and nested operations,
+    // Each item on the stack is a tuple of (latest_operator, latest_unit, latest_token)
+    let mut ctx_stack: Vec<(Option<&str>, Option<&str>, Option<&Token>)> = Vec::new();
+    ctx_stack.push((None, None, None));
 
     for token in t {
         match token {
-            Token::Unit(unit) => {
-                // If the last operator was a "/" and there is already a unit in the statement
-                // then this is invalid, the right-hand side of a division statement should never
-                // have a unit.
-                if matches!(last_operator, Some("/")) {
-                    return Err(ValidationError::InvalidDivisionRHS)
-                }
-                
-                // If the last operator was a "*" and there is already a unit in the statement
-                // then this is invalid, one side of a multiplication statement should be a 
-                // unitless number.
-                if matches!(last_operator, Some("*")) && unit_count > 0 {
-                    return Err(ValidationError::MultiplicationWithUnits)
+            // Left parentheses create a new context in the stack
+            Token::LeftParen => {
+                let context = ctx_stack.last_mut().unwrap();
+
+                // For Left paren, we push the token to the current context before creating a new one
+                // This ensures that parentheses are treated as a member of the context they are written in
+                // i.e. not a part of the context they delimit.
+                context.2 = Some(token);
+
+                ctx_stack.push((None, None, None))
+            },
+            // Right parentheses pops the latest context from the stack
+            Token::RightParen => {
+                ctx_stack.pop();
+                let stack_len = ctx_stack.len();
+                if stack_len == 0 {
+                    return Err(ValidationError::MismatchedParentheses)
                 }
 
-                if last_unit.is_some() {
-                    if !matches!(last_unit, Some(unit)) {
-                        return Err(ValidationError::MixedUnitArithmetic)
-                    }
-                    last_unit = None;
-                } else {
-                    last_unit = Some(unit);
-                }
-
-                unit_count += 1
+                // For Right paren, we push the token to the context after removing the previous from the stack
+                // This ensures that parentheses are treated as a member of the context they are written in
+                // i.e. not a part of the context they delimit.
+                let context = ctx_stack.last_mut().unwrap();
+                context.2 = Some(token);
             },
             Token::Operator(op) => {
-                if op == "/" || op == "*" {
-                    has_div_or_mul = true
+                let context = ctx_stack.last_mut().unwrap();
+
+                context.0 = Some(op);
+                if op != "/" && op != "*" {
+                    context.1 = None;
                 }
 
-                last_operator = Some(op);
-            }
-            _ => {}
-        }
-    }
+                if matches!(context.2, None) {
+                    return Err(ValidationError::InvalidSyntax);
+                }
 
-    if has_div_or_mul && unit_count > 1 {
-        return Err(ValidationError::InvalidDivMulOperation)
-    }
+                context.2 = Some(token);
+            },
+            Token::Unit(unit) => {
+                let context = ctx_stack.last_mut().unwrap();
 
-    for (prev, current) in tokens.iter() {
-        // validate based on the previous token
-        // Most useful for check a Token follows another kind of Token etc.
-        match prev {
-            Some(Token::Operator(op)) => {
-                if op == "/" && matches!(current, Token::Number(num) if num == "0") {
+                // If we hit a unit, and we didn't previously have a number then error
+                if !matches!(context.2, Some(Token::Number(_))) {
+                    return Err(ValidationError::InvalidSyntax)
+                }
+
+                // If in a division operation, there should be no units on the RHS
+                if matches!(context.0, Some("/")) {
+                    return Err(ValidationError::InvalidDivisionRHS);
+                }
+
+                // If in a multiplication operation and there has already been a unit
+                // there should be no more units in the operation
+                if matches!(context.0, Some("*")) && context.1.is_some() {
+                    return Err(ValidationError::MultiplicationWithUnits);
+                }
+
+                context.1 = Some(unit);
+                context.2 = Some(token);
+            },
+            Token::Number(num) => {
+                let context = ctx_stack.last_mut().unwrap();
+
+                // Number should only ever follow None or an operator.
+                if !matches!(context.2, None | Some(Token::Operator(_))) {
+                    return Err(ValidationError::InvalidSyntax)
+                }
+
+                if matches!(context.0, Some("/")) && num == "0" {
                     return Err(ValidationError::DivisionByZero)
                 }
-            }
-            Some(Token::Number(_)) => {
-                // Check that only a unit or whitespace follow a number.
-                if !matches!(current, Token::Unit(_) | Token::Operator(_)) {
-                    return Err(ValidationError::InvalidWhitespace);
-                }
-            }
-            Some(Token::Unit(_)) => {
-                if matches!(current, Token::Unit(_)) {
-                    return Err(ValidationError::InvalidToken);
-                }
-            }
-            Some(Token::Variable(_)) => {}
-            Some(Token::LeftParen) => {}
-            Some(Token::RightParen) => {}
-            None => {}
-        }
 
-        // Validate based on the current token.
-        match current {
-            Token::Number(value) => {
-                // Floats must include the trailing digits in css.
-                if value.ends_with(".") {
-                    return Err(ValidationError::InvalidNumber(value.to_string()));
+                // Floats should always include the trailing digits (Number should never end in ".")
+                if num.ends_with(".") {
+                    return Err(ValidationError::InvalidNumber(num.to_string()));
                 }
-            }
+
+                context.2 = Some(token);
+            },
             Token::Variable(value) => {
+                let context = ctx_stack.last_mut().unwrap();
+
                 if !value.starts_with("var(--") || !value.ends_with(")") {
-                    return Err(ValidationError::InvalidVariable(value.to_string()));
+                    return Err(ValidationError::InvalidVariable(value.to_string()))
                 }
+
+                context.2 = Some(token);
             }
-            _ => {}
         }
+    }
+
+    if ctx_stack.len() > 1 || matches!(ctx_stack[0].2, Some(Token::Operator(_))) {
+        return Err(ValidationError::IncompleteExpression)
     }
 
     Ok(())
@@ -124,81 +128,184 @@ pub(crate) fn validator(t: &[Token]) -> Result<(), ValidationError> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::token::Token;
-
-    use matches::assert_matches;
-
-    mod parentheses {
-        use super::*;
-        use test_case::test_case;
-
-        #[test_case(vec![Token::LeftParen])]
-        #[test_case(vec![Token::RightParen])]
-        #[test_case(vec![Token::LeftParen, Token::Number(String::from("5")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Number(String::from("10"))])]
-        fn invalid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_err());
-            assert_matches!(res.err().unwrap(), ValidationError::MismatchedParentheses)
-        }
+    use test_case::test_case;
+    
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("%".to_string()), Token::Operator("-".to_string()), Token::Number("50".to_string()), Token::Unit("px".to_string())]; "subtract px from percent")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("%".to_string()), Token::Operator("*".to_string()), Token::Number("2".to_string())]; "multiply percent by number")]
+    #[test_case(&[Token::Number("50".to_string()), Token::Unit("vh".to_string()), Token::Operator("/".to_string()), Token::Number("2".to_string())]; "divide vh by number")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("px".to_string()), Token::Operator("+".to_string()), Token::Number("2".to_string()), Token::Unit("em".to_string())]; "add px to em")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("px".to_string()), Token::Operator("-".to_string()), Token::LeftParen, Token::Number("50".to_string()), Token::Unit("px".to_string()), Token::Operator("-".to_string()), Token::Number("30".to_string()), Token::Unit("px".to_string()),Token::RightParen]; "nested operation with subtraction")]
+    #[test_case(&[Token::LeftParen, Token::Number("100".to_string()), Token::Unit("px".to_string()), Token::Operator("-".to_string()), Token::Number("50".to_string()), Token::Unit("px".to_string()), Token::RightParen, Token::Operator("*".to_string()), Token::Number("3".to_string())]; "nested operation with subtraction and multiplication")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("%".to_string()), Token::Operator("/".to_string()), Token::Number("2".to_string()), Token::Operator("-".to_string()), Token::Number("30".to_string()), Token::Unit("px".to_string())] ; "Division and subtraction with no parentheses")]
+    #[test_case(&[Token::Variable("var(--width)".to_string()), Token::Operator("*".to_string()), Token::Number("2".to_string())] ; "multiply variable by number")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("%".to_string()), Token::Operator("-".to_string()), Token::Variable("var(--padding)".to_string())] ; "subtract variable from percentage")]
+    #[test_case(&[Token::Number("100".to_string()), Token::Unit("vh".to_string()), Token::Operator("-".to_string()), Token::LeftParen, Token::Number("2".to_string()), Token::Operator("*".to_string()), Token::Variable("var(--margin)".to_string()), Token::RightParen] ; "complex nested operation with variable")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::LeftParen, 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("+".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen, 
+        Token::Operator("-".to_string()), 
+        Token::Number("20".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen, 
+        Token::Operator("*".to_string()), 
+        Token::Number("2".to_string())
+    ]; "double nested add and subtract, then multiply")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("vw".to_string()), 
+        Token::Operator("-".to_string()), 
+        Token::LeftParen, 
+        Token::Number("80".to_string()), 
+        Token::Unit("vw".to_string()), 
+        Token::Operator("+".to_string()), 
+        Token::Number("30".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen
+    ]; "subtract with nested add")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Number("200".to_string()), 
+        Token::Operator("/".to_string()), 
+        Token::Number("2".to_string()), 
+        Token::RightParen, 
+        Token::Operator("*".to_string()), 
+        Token::LeftParen, 
+        Token::Number("50".to_string()), 
+        Token::Operator("+".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::RightParen
+    ]; "nested division and addition")]
+    fn valid(input: &[Token]) {
+        let result = validator(input);
+        println!("{:?}", result);
+        assert!(result.is_ok())
     }
 
-    mod variables {
-        use super::*;
-        use test_case::test_case;
-
-        #[test_case(vec![Token::Variable(String::from("var(--typescale)")), Token::Operator(String::from("+")), Token::Number(String::from("1"))])]
-        fn valid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_ok());
-        }
-
-        #[test_case(vec![Token::Variable(String::from("var(-color)")), Token::Operator(String::from("+")), Token::Number(String::from("2"))] ; "missing hyphen")]
-        #[test_case(vec![Token::Variable(String::from("var(--color")), Token::Operator(String::from("+")), Token::Number(String::from("2"))] ; "missing paren")]
-        fn invalid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_err());
-            assert_matches!(res.err().unwrap(), ValidationError::InvalidVariable(_));
-        }
-    }
-
-    mod unit {
-        use super::*;
-
-        use test_case::test_case;
-
-        #[test_case(vec![Token::Unit(String::from("px")), Token::Unit(String::from("rem"))] ; "Disallow consecutive units")]
-        fn invalid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_err());
-        }
-    }
-
-    mod operators {
-        use super::*;
-
-        use test_case::test_case;
-
-        #[test_case(vec![Token::Number(String::from("12")), Token::Operator(String::from("+")), Token::Number(String::from("1"))] ; "Numbers only without units")]
-        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Number(String::from("1"))])]
-        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("%")), Token::Operator(String::from("*")), Token::Number(String::from("2"))] ; "Multiplication where one operand has a unit")]
-        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("px")), Token::Operator(String::from("/")), Token::Number(String::from("10"))] ; "Division where one operand has a unit")]
-        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("*")), Token::Number(String::from("2")), Token::Unit(String::from("rem"))] ; "Multiplication where one operand has a unit #2")]
-        #[test_case(vec![Token::Number(String::from("42")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Variable(String::from("var(--base)"))] ; "Multiplication with a variable on one side")]
-        #[test_case(vec![Token::Number(String::from("10")), Token::Unit(String::from("%")), Token::Operator(String::from("/")), Token::Variable(String::from("var(--base)"))] ; "Division with a variable on one side")]
-        fn valid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_ok())
-        }
-
-        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("/")), Token::Number(String::from("0"))] ; "Division by Zero")]
-        #[test_case(vec![Token::Number(String::from("100")), Token::Unit(String::from("%")), Token::Number(String::from("50")), Token::Unit(String::from("px"))] ; "Missing Operator")]
-        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("px")), Token::Operator(String::from("*")), Token::Number(String::from("1")), Token::Unit(String::from("px"))] ; "Multiplication where both operands have units")]
-        #[test_case(vec![Token::Number(String::from("12")), Token::Unit(String::from("%")), Token::Operator(String::from("/")), Token::Number(String::from("1")), Token::Unit(String::from("rem"))] ; "Division where both operands have units")]
-        #[test_case(vec![Token::Number(String::from("100")), Token::Operator(String::from("/")), Token::Number(String::from("10")), Token::Unit(String::from("%"))] ; "Division where RHS operand has a unit")]
-        #[test_case(vec![Token::Variable(String::from("var(--base)")), Token::Operator(String::from("/")), Token::Number(String::from("10")), Token::Unit(String::from("%"))] ; "Division where RHS operand has a unit #2")]
-        fn invalid(tokens: Vec<Token>) {
-            let res = validator(&tokens);
-            assert!(res.is_err());
-        }
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("/".to_string()), 
+        Token::Number("0".to_string())
+    ]; "division by zero")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("/".to_string()), 
+        Token::Number("2".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "divide px by px")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("%".to_string()), 
+        Token::Operator("*".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::Unit("%".to_string())
+    ]; "multiply percent by percent")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Operator("+".to_string())
+    ]; "incomplete expression")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "missing closing parenthesis")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("em".to_string()), 
+        Token::Operator("*".to_string()), 
+        Token::Number("5".to_string()), 
+        Token::Unit("vh".to_string())
+    ]; "multiplication with two units")]
+    #[test_case(&[
+        Token::Variable("var(--base)".to_string()), 
+        Token::Operator("/".to_string()), 
+        Token::Number("2".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "division of variable by unit")]
+    #[test_case(&[
+        Token::Unit("px".to_string()), 
+        Token::Number("100".to_string()), 
+        Token::Operator("+".to_string()), 
+        Token::Number("100".to_string())
+    ]; "unit before number")]
+    #[test_case(&[
+        Token::Operator("*".to_string()), 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "operator at the start")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Operator("*".to_string()), 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("-".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen, 
+        Token::Operator("*".to_string()), 
+        Token::Number("3".to_string())
+    ]; "operator at the start of nested expression")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("*".to_string()), 
+        Token::LeftParen, 
+        Token::Number("50".to_string()), 
+        Token::RightParen, 
+        Token::Operator("+".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "nested multiplication without unit in inner expression")]
+    #[test_case(&[
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("/".to_string()), 
+        Token::LeftParen, 
+        Token::Number("10".to_string()),
+        Token::Unit("px".to_string()),
+        Token::Operator("/".to_string()),
+        Token::Number("0".to_string()), 
+        Token::RightParen
+    ]; "division by zero in nested expression")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Operator("-".to_string()), 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen, 
+        Token::Operator("*".to_string()), 
+        Token::Number("3".to_string())
+    ]; "invalid operator at the start of nested expression")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Number("100".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::Operator("-".to_string()), 
+        Token::RightParen, 
+        Token::Number("50".to_string())
+    ]; "missing operator before a number")]
+    #[test_case(&[
+        Token::LeftParen, 
+        Token::Number("100".to_string()), 
+        Token::Unit("%".to_string()), 
+        Token::Operator("+".to_string()), 
+        Token::Number("50".to_string()), 
+        Token::Unit("px".to_string()), 
+        Token::RightParen, 
+        Token::Operator("/".to_string()), 
+        Token::Number("2".to_string()), 
+        Token::Unit("px".to_string())
+    ]; "unit mismatch in division after nested expression")]
+    fn invalid(input: &[Token]) {
+        let result = validator(input);
+        assert!(result.is_err())
     }
 }
