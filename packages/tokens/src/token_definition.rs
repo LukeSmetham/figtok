@@ -1,6 +1,6 @@
 use crate::token_kind::TokenKind;
 use crate::shadow_value::{ShadowLayerKind, ShadowValue};
-use crate::replace_method::ReplaceMethod;
+use crate::value_as::ValueAs;
 use crate::regex::REGEX_HB;
 use crate::token_store::TokenStore;
 
@@ -28,9 +28,9 @@ pub struct TokenDefinition<T> {
 }
 
 impl TokenDefinition<String> {
-    pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
+    pub fn get_value(&self, store: &dyn TokenStore, value_as: ValueAs, nested: bool, theme: &Option<String>) -> String {
         let value = if REGEX_HB.is_match(&self.value) {
-            let mut v = store.enrich(self.value.to_string(), replace_method, &theme);
+            let mut v = store.enrich(self.value.to_string(), value_as, &theme);
 
             if self.kind == TokenKind::Color && !v.starts_with("rgb") && !nested {
                 v = format!("rgb({})", v);
@@ -52,7 +52,7 @@ impl TokenDefinition<String> {
 }
 
 impl TokenDefinition<ShadowValue> {
-    pub fn get_value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+    pub fn get_value(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> String {
         // Initialize a new string to hold the value
         let mut value = String::new();
 
@@ -86,7 +86,7 @@ impl TokenDefinition<ShadowValue> {
         value.pop();
         value.pop();
 
-        store.enrich(value, replace_method, &theme)
+        store.enrich(value, value_as, &theme)
     }
 }
 

@@ -13,7 +13,7 @@ use figtok_tokens::{
 	TokenSets, 
 	Themes, 
 	Token,
-	ReplaceMethod,
+	ValueAs,
 	regex::REGEX_HB,
 	utils::css_stringify,
 	TokenStore,
@@ -58,24 +58,24 @@ impl TokenStore for Figtok {
 		}
 	}
 
-	fn enrich(&self, reference: String, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+	fn enrich(&self, reference: String, value_as: ValueAs, theme: &Option<String>) -> String {
 		REGEX_HB
 			.replace_all(&reference, |caps: &Captures| {
 				// Get the reference (dot-notation) from the reference string without the surrounding curly brackets and use it to retrieve the referenced value.
 				let name = &caps[1];
 
-				match replace_method {
+				match value_as {
 					// Convert the name of the token referenced in the reference string into a CSS var statement so CSS itself can handle the reference.
-					ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
+					ValueAs::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
 					// Get the value of the referenced token, so we can replace the handlebar ref in the original reference string.
-					ReplaceMethod::StaticValues => {
+					ValueAs::StaticValues => {
 						if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
-							t.value(self, replace_method, true, theme)
+							t.value(self, value_as, true, theme)
 						} else {
 							// No token with a matching name was found.
 
 							// TODO: Should we panic here instead? Wondering if it\s better to fail and let the user know that there is a token missing...
-							// TODO: Returning "BROKEN_REF" is closer to the behavior with ReplaceMethod:CssVariables as if the ref is broken, the css will still be output, but won't work in practice.
+							// TODO: Returning "BROKEN_REF" is closer to the behavior with ValueAs:CssVariables as if the ref is broken, the css will still be output, but won't work in practice.
 							String::from("BROKEN_REF")
 						}
 					}

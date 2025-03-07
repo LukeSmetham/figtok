@@ -6,7 +6,7 @@ use convert_case::{Case, Casing};
 
 use crate::token_definition::TokenDefinition;
 use crate::shadow_value::ShadowValue;
-use crate::replace_method::ReplaceMethod;
+use crate::value_as::ValueAs;
 use crate::token_store::TokenStore;
 use crate::utils::css_stringify;
 
@@ -50,10 +50,10 @@ impl Token {
 	/// This is primarily used to access the value of a token, when we are expanding a token value that references another token.
 	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
 	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
-    pub fn value(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, nested: bool, theme: &Option<String>) -> String {
+    pub fn value(&self, store: &dyn TokenStore, value_as: ValueAs, nested: bool, theme: &Option<String>) -> String {
         let mut value = match self {
-            Token::Standard(t) => t.get_value(store, replace_method, nested, theme),
-            Token::Shadow(t) => t.get_value(store, replace_method, theme),
+            Token::Standard(t) => t.get_value(store, value_as, nested, theme),
+            Token::Shadow(t) => t.get_value(store, value_as, theme),
             Token::Composition(t) => {
 				// Composition tokens are output as classes, containing properties for each inner value of the token.
 				// Because of this, below instead of calling get_value directly on the token, we get the token value as_object() and
@@ -63,7 +63,7 @@ impl Token {
 				for (key, value) in t.value.as_object().unwrap() {
 					// Here we call enrich directly as the inner values of a composition token are not tokens in their own right, 
 					//so don't already exist on store - but may still contain references to tokens.
-					let token_value = store.enrich(serde_json::from_value::<String>(value.to_owned()).unwrap(), replace_method, theme);
+					let token_value = store.enrich(serde_json::from_value::<String>(value.to_owned()).unwrap(), value_as, theme);
 					
 					result.push_str(
 					format!(
@@ -87,13 +87,13 @@ impl Token {
         value
     }
 
-	pub fn serialize(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+	pub fn serialize(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> String {
 		match self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				format!(
 					"--{}: {};",
 					css_stringify(&self.name()),
-					self.value(store, replace_method, false, theme)
+					self.value(store, value_as, false, theme)
 				)
 			}
 			Token::Composition(_) => {
@@ -101,20 +101,20 @@ impl Token {
 				format!(
 					".{} {{{}}}", 
 					selector_name, 
-					&self.value(store, replace_method, false, theme)
+					&self.value(store, value_as, false, theme)
 				)
 			},
 		}
 	}
 	
-	pub fn to_json(&self, store: &dyn TokenStore, replace_method: ReplaceMethod, theme: &Option<String>) -> serde_json::Value {
+	pub fn to_json(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> serde_json::Value {
 		match &self {
 			Token::Standard(_) | Token::Shadow(_) => {
 				let token_name = self.name();
 				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
 				key_parts.reverse();
 
-				let value = self.value(store, replace_method, false, theme);
+				let value = self.value(store, value_as, false, theme);
 				
 				let mut j = json!(value);
 				for key in key_parts {
@@ -131,7 +131,7 @@ impl Token {
 				let mut properties: HashMap<String, String> = HashMap::new();
 
 				for (property_name, property_value) in t.value.as_object().unwrap() {
-					let inner_value = store.enrich(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), replace_method, &theme);
+					let inner_value = store.enrich(serde_json::from_value::<String>(property_value.to_owned()).unwrap(), value_as, &theme);
 					properties.insert(property_name.clone(), inner_value);
 				}
 
@@ -168,7 +168,7 @@ mod test {
 			
 			let token = Token::Standard(token_definition);
 
-			assert_eq!(token.value(&store, ReplaceMethod::CssVariables, false, &None), "24px".to_string());
+			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "24px".to_string());
 		}
 		
 		#[test]
@@ -203,13 +203,13 @@ mod test {
 
 			// Check the static replace method produces the expected output
 			assert_eq!(
-				token.value(&store, ReplaceMethod::StaticValues, false, &None), 
+				token.value(&store, ValueAs::StaticValues, false, &None), 
 				String::from("rgb(0, 0, 0)")
 			);
 
 			// Check the css variables replace method produces the expected output.
 			assert_eq!(
-				token.value(&store, ReplaceMethod::CssVariables, false, &None), 
+				token.value(&store, ValueAs::CssVariables, false, &None), 
 				format!(
 					"rgb(var(--{}))", 
 					css_stringify(&ref_token.name())

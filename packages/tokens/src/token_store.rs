@@ -1,5 +1,5 @@
 use crate::token::Token;
-use crate::replace_method::ReplaceMethod;
+use crate::value_as::ValueAs;
 
 /// `TokenStore` is a trait that defines a storage interface for managing, retrieving,
 /// and transforming design tokens.
@@ -29,22 +29,22 @@ pub trait TokenStore {
     fn tokens(&self, theme: &Option<String>) -> Vec<&Token>;
 
     /// Transforms a token reference (a Handlebars-style string) into either the actual token value
-    /// or a CSS variable selector, depending on the specified `ReplaceMethod` and theme.
+    /// or a CSS variable selector, depending on the specified `ValueAs` and theme.
     ///
     /// # Arguments
     ///
     /// * `reference` - A `String` representing the Handlebars-style token reference.
-    /// * `replace_method` - A `ReplaceMethod` indicating how to replace the token reference.
+    /// * `value_as` - A `ValueAs` indicating how to replace the token reference.
     /// * `theme` - An `Option<String>` representing the optional theme to use for the replacement.
     ///
     /// # Returns
     ///
     /// * A `String` containing either the resolved token value or a CSS variable selector,
-    ///   based on the `ReplaceMethod`.
+    ///   based on the `ValueAs`.
     fn enrich(
         &self,
         reference: String,
-        replace_method: ReplaceMethod,
+        value_as: ValueAs,
         theme: &Option<String>,
     ) -> String;
 }
@@ -56,7 +56,7 @@ pub mod test_utils {
 	use super::TokenStore;
 	use crate::regex::REGEX_HB;
 	use crate::utils::css_stringify;
-	use crate::{ReplaceMethod, Tokens, TokenSets, Themes};
+	use crate::{ValueAs, Tokens, TokenSets, Themes};
 	use crate::Token;
 
 	#[derive(Default)]
@@ -91,16 +91,16 @@ pub mod test_utils {
 			}
 		}
 
-		fn enrich(&self, reference: String, replace_method: ReplaceMethod, theme: &Option<String>) -> String {
+		fn enrich(&self, reference: String, value_as: ValueAs, theme: &Option<String>) -> String {
 			REGEX_HB
 				.replace_all(&reference, |caps: &Captures| {
 					let name = &caps[1];
 
-					match replace_method {
-						ReplaceMethod::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
-						ReplaceMethod::StaticValues => {
+					match value_as {
+						ValueAs::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
+						ValueAs::StaticValues => {
 							if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
-								t.value(self, replace_method, true, theme)
+								t.value(self, value_as, true, theme)
 							} else {
 								String::from("BROKEN_REF")
 							}

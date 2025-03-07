@@ -3,7 +3,7 @@ use merge_struct::merge;
 use serde_json::json;
 
 use crate::{Figtok, TokenStore, log};
-use figtok_tokens::{ReplaceMethod, TokenSet};
+use figtok_tokens::{ValueAs, TokenSet};
 
 use super::Serializer;
 
@@ -42,7 +42,7 @@ impl JsonSerializer {
 				for id in token_set {
 					let token = store.token(id);
 
-					value = merge(&value, &token.to_json(store, ReplaceMethod::StaticValues, &Some(name.clone()))).unwrap();
+					value = merge(&value, &token.to_json(store, ValueAs::StaticValues, &Some(name.clone()))).unwrap();
 				};
 			}
 
@@ -65,7 +65,7 @@ impl JsonSerializer {
 			for id in token_set {
 				let token = store.token(id);
 
-				value = merge(&value, &token.to_json(store, ReplaceMethod::StaticValues, &None)).unwrap();
+				value = merge(&value, &token.to_json(store, ValueAs::StaticValues, &None)).unwrap();
 			};
 
 			// Now we make sure the output directory exists, and write the CSS file to disk

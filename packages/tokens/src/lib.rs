@@ -5,7 +5,7 @@ extern crate serde_derive;
 extern crate serde_json;
 
 // Internal Modules
-mod replace_method;
+mod value_as;
 mod shadow_value;
 mod token;
 mod token_set;
@@ -24,7 +24,7 @@ pub use token_set::TokenSet;
 pub use token_store::TokenStore;
 pub use token_definition::TokenDefinition;
 pub use token_kind::TokenKind;
-pub use replace_method::ReplaceMethod;
+pub use value_as::ValueAs;
 
 // Type Aliases for Collections of Tokens.
 pub type TokenSets = HashMap<String, TokenSet>;
