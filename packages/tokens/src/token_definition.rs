@@ -15,9 +15,10 @@ use serde::de::DeserializeOwned;
 #[serde(bound(deserialize = "T: DeserializeOwned"))]
 pub struct TokenDefinition<T> {
     /// The value from the original json file for this token. May be a static value, or a reference using handlebars syntax e.g. {color.purple.1}
+    #[serde(alias = "value", alias = "$value")]
     pub value: T,
     /// Tells us what kind of token this is. Aliased from "type" field in the original json.
-    #[serde(alias = "type")]
+    #[serde(alias = "type", alias = "$type")]
     pub kind: TokenKind,
     /// The name field is constructed as the dot-notated selector for the value in the original JSON file. e.g. "color.purple.1"
     #[serde(default)]
@@ -96,10 +97,19 @@ mod tests {
     mod deserialize {
 		use super::*;
 
-        #[test]
-		fn can_be_deserialized_from_str() {
-			// In practice we use std to read the string from JSON files on disk.
-			let token: TokenDefinition<String> = serde_json::from_str("{\"value\":\"24px\",\"kind\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}").unwrap();
+		#[test]
+		fn deserialize_legacy_format() {
+			let token: TokenDefinition<String> = serde_json::from_str("{\"value\":\"24px\",\"type\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}").unwrap();
+
+			assert_eq!(token.value, String::from("24px"));
+			assert_eq!(token.kind.to_string(), TokenKind::FontSize.to_string());
+			assert_eq!(token.name, String::from("fontSize.0"));
+			assert_eq!(token.id, String::from("fontSize.0"));
+		}
+		
+		#[test]
+		fn deserialize_w3c_format() {
+			let token: TokenDefinition<String> = serde_json::from_str("{\"$value\":\"24px\",\"$type\":\"fontSizes\",\"name\":\"fontSize.0\",\"id\":\"fontSize.0\"}").unwrap();
 
 			assert_eq!(token.value, String::from("24px"));
 			assert_eq!(token.kind.to_string(), TokenKind::FontSize.to_string());

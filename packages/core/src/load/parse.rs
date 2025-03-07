@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use std::collections::HashMap;
 use serde::de::DeserializeOwned;
 use figtok_tokens::{TokenDefinition, TokenKind, Token, ShadowValue, TokenSets, Tokens, Themes, TokenSet};
 
@@ -83,7 +83,7 @@ fn parse_token_set(
 		let mut id = prefix.clone();
 		id.push(key.clone());
 
-		let kind = value.get("type");
+		let kind = value.get("type").or_else(|| value.get("$type"));
 
 		match kind {
 			// If the "type" property is present, we have a token definition
@@ -120,7 +120,6 @@ where
 	T: DeserializeOwned
 {
 	let mut token: TokenDefinition<T> = serde_json::from_value(value).unwrap();
-
 	token.id = id;
 	token.name = name;
 

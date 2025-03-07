@@ -5,9 +5,7 @@ use serde_json::json;
 use crate::{Figtok, TokenStore, log};
 use figtok_tokens::{ReplaceMethod, TokenSet};
 
-use super::{
-	Serializer,
-};
+use super::Serializer;
 
 #[derive(Default)]
 pub struct JsonSerializer {}

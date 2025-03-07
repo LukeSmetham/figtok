@@ -44,9 +44,10 @@ fn main() {
 	// Now ensure the output path dir exists.
 	fs::create_dir_all(&args.output).unwrap();
 
+	println!("{}", args.entry);
 	// Check if the input directory exists
 	if !Path::new(&args.entry).exists() {
-		panic!("No {} directory found, passed as input directory", &args.entry);
+		panic!("Input directory {} not found", &args.entry);
 	};
 
 	let (tokens, token_sets, themes) = load(&args.entry);
