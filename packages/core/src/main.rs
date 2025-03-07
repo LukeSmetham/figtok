@@ -50,9 +50,9 @@ fn main() {
 		panic!("Input directory {} not found", &args.entry);
 	};
 
-	let (tokens, token_sets, themes) = load(&args.entry);
+	let (tokens, token_sets, themes, token_set_order) = load(&args.entry);
 
-	let figtok = Figtok::new(tokens, token_sets, themes, &args.output);
+	let figtok = Figtok::new(tokens, token_sets, themes, token_set_order, &args.output);
 
 	figtok.serialize(serializer);
 

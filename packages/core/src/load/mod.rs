@@ -18,7 +18,7 @@ enum FileMode {
 }
 
 /// Loads all the tokens from the input directory into memory.
-pub fn load(entry_path: &String) -> (Tokens, TokenSets, Themes) {
+pub fn load(entry_path: &String) -> (Tokens, TokenSets, Themes, Vec<String>) {
     let mode = get_file_mode(&entry_path);
 
     // Load in the raw data using serde, either from a single json file, or by traversing
@@ -30,7 +30,7 @@ pub fn load(entry_path: &String) -> (Tokens, TokenSets, Themes) {
 	//
 	// We also get themes_source, a Vec of serde_json::Value's containing each theme definition from the
 	// $themes file
-    let (source_token_sets, source_themes) = match mode {
+    let (source_token_sets, source_themes, token_set_order) = match mode {
         FileMode::SingleFile => load_from_file(&entry_path),
         FileMode::MultiFile => load_from_dir(&entry_path),
     };
@@ -38,10 +38,10 @@ pub fn load(entry_path: &String) -> (Tokens, TokenSets, Themes) {
     let (tokens, token_sets) = parse_tokens(source_token_sets);
     let themes = parse_themes(source_themes);
 
-	(tokens, token_sets, themes)
+	(tokens, token_sets, themes, token_set_order)
 }
 
-fn load_from_file(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>) {
+fn load_from_file(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>, Vec<String>) {
     let data: serde_json::Value = match serde_json::from_str(&read_file(&entry_path.to_string()).unwrap()) {
         Ok(json) => json,
         Err(error) => panic!("Error reading $metdata.json: {}", error),
@@ -50,24 +50,24 @@ fn load_from_file(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>,
     let metadata = data.get("$metadata").unwrap();
     let themes: Vec<serde_json::Value> =
         serde_json::from_value(data.get("$themes").unwrap().to_owned()).unwrap();
+    
+    let token_set_order = 
+        serde_json::from_value::<Vec<String>>(metadata.get("tokenSetOrder").unwrap().to_owned())
+            .unwrap();
 
     let mut token_sets: HashMap<String, HashMap<String, serde_json::Value>> = HashMap::new();
 
-    for slug in
-        serde_json::from_value::<Vec<String>>(metadata.get("tokenSetOrder").unwrap().to_owned())
-            .unwrap()
-    {
+    for slug in &token_set_order {
         let token_set: HashMap<String, serde_json::Value> =
             serde_json::from_value(data.get(&slug).unwrap().to_owned()).unwrap();
 
         token_sets.insert(slug.clone(), token_set);
     }
 
-    (token_sets, themes)
+    (token_sets, themes, token_set_order)
 }
 
-fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>) {
-    // This gives us an HashMap containing the "tokenSetOrder", a Vec<String> with
+fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, Vec<Value>, Vec<String>) {
     // all of the token sets in order, matching their positions in figma tokens UI.
     let metadata: HashMap<String, Vec<String>> = match serde_json::from_str(
         &read_file(&format!("{}/$metadata.json", entry_path)).unwrap(),
@@ -75,6 +75,8 @@ fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, 
         Ok(json) => json,
         Err(error) => panic!("Error reading $metadata.json: {}", error),
     };
+
+    let token_set_order = metadata.get("tokenSetOrder").unwrap().clone();
 
     let themes: Vec<serde_json::Value> =
         match serde_json::from_str(&read_file(&format!("{}/$themes.json", entry_path)).unwrap()) {
@@ -88,9 +90,9 @@ fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, 
     // Using the tokenSetOrder array in the metadata file we can construct the path slugs for every json
     // file that contains tokens. Below we read the files in order, and add them to the above HashMap
     // ready to be parsed.
-    for slug in metadata.get("tokenSetOrder").unwrap() {
+    for slug in &token_set_order {
         let data: HashMap<String, serde_json::Value> =
-            match read_file(&format!("./tokens/{}.json", &slug)) {
+            match read_file(&format!("{}/{}.json", &entry_path, &slug)) {
                 Ok(file) => match serde_json::from_str(&file) {
                     Ok(data) => data,
                     Err(error) => panic!("Error parsing token set: {}", error),
@@ -101,7 +103,7 @@ fn load_from_dir(entry_path: &str) -> (HashMap<String, HashMap<String, Value>>, 
         token_sets.insert(slug.clone(), data);
     }
 
-    (token_sets, themes)
+    (token_sets, themes, token_set_order)
 }
 
 fn get_file_mode(path: &str) -> FileMode {

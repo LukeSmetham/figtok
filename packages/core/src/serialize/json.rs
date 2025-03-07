@@ -58,8 +58,9 @@ impl JsonSerializer {
 	pub fn serialize_token_sets(&self, store: &Figtok) {
 		log!("Detected {} token sets...", store.token_sets.len());
 
-		for (set_name, token_set) in &store.token_sets {
+		for set_name in &store.token_set_order {
 			let mut value = json!({});
+			let token_set = &store.token_sets[set_name];
 
 			for id in token_set {
 				let token = store.token(id);

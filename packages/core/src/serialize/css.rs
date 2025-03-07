@@ -85,10 +85,11 @@ impl CssSerializer {
     pub fn serialize_token_sets(&self, store: &Figtok) {
         log!("Detected {} token sets...", store.token_sets.len());
 
-        // create a .css file for every token set
-        for (set_name, token_set) in &store.token_sets {
+        // Create a .css file for every token set, in the order specified by token_set_order
+        for set_name in &store.token_set_order {
             log!("Generating Token Set: {}", set_name);
 
+            let token_set = &store.token_sets[set_name];
             let (variables, styles) = self.serialize_token_set(store, token_set, &None);
 
             // Split the set name by any /'s in case they are nested but remove the
