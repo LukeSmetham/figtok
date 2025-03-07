@@ -5,7 +5,7 @@ use serde_json::json;
 use convert_case::{Case, Casing};
 
 use crate::token_definition::TokenDefinition;
-use crate::shadow_value::ShadowValue;
+use crate::shadow_value::{ShadowValue, ShadowLayer, ShadowLayerKind};
 use crate::value_as::ValueAs;
 use crate::token_store::TokenStore;
 use crate::utils::css_stringify;
@@ -218,8 +218,106 @@ mod test {
 		}
 
 		#[test]
-		fn rgb_color_reference() {
+		fn color_with_nested_reference() {
+			let ref_definition = TokenDefinition {
+				id: String::from("global.ref.neutral.0"),
+				name: String::from("neutral.0"),
+				value: String::from("#000000"),
+				kind: TokenKind::Color,
+			};
+			
+			let color_definition = TokenDefinition {
+				id: String::from("light.palette.fg.2"),
+				name: String::from("palette.fg.2"),
+				value: String::from("{neutral.0}"),
+				kind: TokenKind::Color,
+			};
 
+			let mut tokens = HashMap::new();
+			tokens.insert(ref_definition.id.clone(), Token::Standard(ref_definition));
+			tokens.insert(color_definition.id.clone(), Token::Standard(color_definition));
+
+			let store = MockStore::new(tokens, HashMap::new(), HashMap::new());
+			
+			let token = Token::Standard(TokenDefinition {
+				id: String::from("light.palette.fg.1"),
+				name: String::from("palette.fg.1"),
+				value: String::from("rgba({palette.fg.2}, 0.89)"),
+				kind: TokenKind::Color,
+			});
+
+			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "rgba(var(--neutral-0), 0.89)");
+			assert_eq!(token.value(&store, ValueAs::StaticValues, false, &None), "rgba(0, 0, 0, 0.89)");
 		}
+
+		#[test]
+		fn shadow() {
+			let store = MockStore::default();
+
+			let shadow_value = ShadowValue(vec![ShadowLayer {
+				color: String::from("rgba(0, 0, 0, 0.1)"),
+				x: "0".to_string(),
+				y: "0".to_string(),
+				blur: "0".to_string(),
+				spread: "0".to_string(),
+				kind: ShadowLayerKind::DropShadow,
+			}]);
+
+			let token_definition: TokenDefinition<ShadowValue> = TokenDefinition {
+				id: String::from("global.shadow.0"),
+				name: String::from("shadow.0"),
+				value: shadow_value,
+				kind: TokenKind::BoxShadow,
+			};
+
+			let token = Token::Shadow(token_definition);
+
+			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.1)");
+		}	
+		
+		#[test]
+		fn shadow_with_nested_reference() {
+			let ref_definition = TokenDefinition {
+				id: String::from("global.ref.grey.0"),
+				name: String::from("ref.grey.0"),
+				value: String::from("#000000"),
+				kind: TokenKind::Color,
+			};
+			let shadow_color_definition = TokenDefinition {
+				id: String::from("global.theme.shadow.1"),
+				name: String::from("theme.shadow.1"),
+				value: String::from("rgba({ref.grey.0}, 0.05)"),
+				kind: TokenKind::Color,
+			};
+			
+			let mut tokens = HashMap::new();
+			tokens.insert(ref_definition.id.clone(), Token::Standard(ref_definition));
+			tokens.insert(shadow_color_definition.id.clone(), Token::Standard(shadow_color_definition));
+
+			let store = MockStore::new(tokens, HashMap::new(), HashMap::new());
+
+			let shadow_value = ShadowValue(vec![
+				ShadowLayer {
+					color: String::from("{theme.shadow.1}"),
+					x: "0".to_string(),
+					y: "0".to_string(),
+					blur: "0".to_string(),
+					spread: "0".to_string(),
+					kind: ShadowLayerKind::DropShadow,
+				}
+			]);
+
+			let token_definition: TokenDefinition<ShadowValue> = TokenDefinition {
+				id: String::from("global.shadow.0"),
+				name: String::from("shadow.0"),
+				value: shadow_value,
+				kind: TokenKind::BoxShadow,
+			};
+
+			let token = Token::Shadow(token_definition);
+
+			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "0px 0px 0px 0px var(--shadow)");
+			assert_eq!(token.value(&store, ValueAs::StaticValues, false, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.05)");
+		}	
 	}
 }

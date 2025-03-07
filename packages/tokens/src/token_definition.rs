@@ -59,7 +59,13 @@ impl TokenDefinition<ShadowValue> {
         // The TokenDefinition for a shadow token value is a Vec<ShadowLayer>, we iterate through these
         // formatting them as valid CSS shadows, and pushing them into the string.
         for layer in &self.value.0 {
-            let color = if !layer.color.starts_with("rgb") { format!("rgb({})", layer.color) } else { layer.color.clone() };
+
+			// If the color is a handlebars reference, we need to enrich it first.
+			let color = if REGEX_HB.is_match(&layer.color) {
+				store.enrich(layer.color.clone(), value_as, theme)
+			} else {
+				layer.color.clone()
+			};
 
             match layer.kind {
                 ShadowLayerKind::DropShadow => value.push_str(&format!(

@@ -66,7 +66,9 @@ impl TokenStore for Figtok {
 
 				match value_as {
 					// Convert the name of the token referenced in the reference string into a CSS var statement so CSS itself can handle the reference.
-					ValueAs::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
+					ValueAs::CssVariables => {
+						format!("var(--{})", css_stringify(&name.to_string()))
+					},
 					// Get the value of the referenced token, so we can replace the handlebar ref in the original reference string.
 					ValueAs::StaticValues => {
 						if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
