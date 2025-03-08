@@ -16,7 +16,8 @@ impl FigmaClient {
 		let http_client = HttpClient::builder()
 			.default_headers(headers)
 			.build()
-			.map_err(FigmaError::RequestError)?;
+			.map_err(FigmaError::RequestError)
+			.unwrap();
 
 		Self { 
 			http_client, 
