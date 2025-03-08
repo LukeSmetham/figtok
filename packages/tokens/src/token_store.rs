@@ -100,7 +100,7 @@ pub mod test_utils {
 						ValueAs::CssVariables => format!("var(--{})", css_stringify(&name.to_string())),
 						ValueAs::StaticValues => {
 							if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
-								t.value(self, value_as, true, theme)
+								t.value(self, value_as, theme)
 							} else {
 								String::from("BROKEN_REF")
 							}

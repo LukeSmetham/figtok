@@ -28,27 +28,17 @@ pub struct TokenDefinition<T> {
 }
 
 impl TokenDefinition<String> {
-    pub fn get_value(&self, store: &dyn TokenStore, value_as: ValueAs, nested: bool, theme: &Option<String>) -> String {
-        let value = if REGEX_HB.is_match(&self.value) {
-            let mut v = store.enrich(self.value.to_string(), value_as, &theme);
-
-            if self.kind == TokenKind::Color && !v.starts_with("rgb") && !nested {
-                v = format!("rgb({})", v);
-            }
-
-            v
+    pub fn get_value(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> String {
+        if self.is_reference() {
+            store.enrich(self.value.to_string(), value_as, &theme)
         } else {
-            if TokenKind::Color == self.kind {
-                Rgb::from_hex_str(&self.value)
-                    .map(|rgb| format!("{}, {}, {}", rgb.get_red(), rgb.get_green(), rgb.get_blue()))
-                    .unwrap_or_else(|_| self.value.clone())  // gracefully handle error
-            } else {
-                self.value.clone()
-            }
-        };
-
-        value
+			self.value.clone()
+        }
     }
+
+	pub fn is_reference(&self) -> bool {
+		REGEX_HB.is_match(&self.value)
+	}
 }
 
 impl TokenDefinition<ShadowValue> {

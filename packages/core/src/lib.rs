@@ -9,14 +9,7 @@ mod log;
 pub use load::load;
 pub use serialize::{Serializer, CssSerializer, JsonSerializer};
 use figtok_tokens::{
-	Tokens, 
-	TokenSets, 
-	Themes, 
-	Token,
-	ValueAs,
-	regex::REGEX_HB,
-	utils::css_stringify,
-	TokenStore,
+	regex::REGEX_HB, utils::css_stringify, Themes, Token, TokenKind, TokenSets, TokenStore, Tokens, ValueAs
 };
 use regex::Captures;
 
@@ -65,14 +58,29 @@ impl TokenStore for Figtok {
 				let name = &caps[1];
 
 				match value_as {
-					// Convert the name of the token referenced in the reference string into a CSS var statement so CSS itself can handle the reference.
 					ValueAs::CssVariables => {
-						format!("var(--{})", css_stringify(&name.to_string()))
+						if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
+							match t.kind() {
+								TokenKind::Color => {
+									if t.is_reference() {
+										self.enrich(t.value(self, value_as, theme), value_as, theme)
+									} else {
+										format!("var(--{})", css_stringify(&name.to_string()))
+									}
+								},
+								_ => {
+									format!("var(--{})", css_stringify(&name.to_string()))
+								}
+							}
+						} else {
+							String::from("BROKEN_REF")
+						}
+						
 					},
 					// Get the value of the referenced token, so we can replace the handlebar ref in the original reference string.
 					ValueAs::StaticValues => {
 						if let Some(t) = self.tokens(theme).iter().find(|t| t.name() == name) {
-							t.value(self, value_as, true, theme)
+							t.value(self, value_as, theme)
 						} else {
 							// No token with a matching name was found.
 

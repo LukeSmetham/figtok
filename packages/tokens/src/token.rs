@@ -4,12 +4,14 @@ use css_math;
 use serde_json::json;
 use convert_case::{Case, Casing};
 
+use crate::regex::REGEX_HB;
 use crate::token_definition::TokenDefinition;
+use colors_transform::{Color, Rgb};
 use crate::shadow_value::{ShadowValue, ShadowLayer, ShadowLayerKind};
 use crate::value_as::ValueAs;
 use crate::token_store::TokenStore;
 use crate::utils::css_stringify;
-
+use crate::TokenKind;
 /// The Token enum holds a TokenDefinition<T> and provides an abstraction with getters for the 
 /// properties of a Token (name, id, kind, value.)
 /// 
@@ -33,6 +35,22 @@ impl Token {
 			Token::Shadow(t) => t.name.clone(),
 		}
 	}
+
+	pub fn kind(&self) -> TokenKind {
+		match self {
+			Token::Standard(t) => t.kind,
+			Token::Composition(t) => t.kind,
+			Token::Shadow(t) => t.kind,
+		}
+	}
+
+	pub fn is_reference(&self) -> bool {
+		match self {
+			Token::Standard(t) => t.is_reference(),
+			Token::Composition(t) => false,
+			Token::Shadow(t) => false,
+		}
+	}
 	
 	/// Get the token id from the underlying TokenDefinition<T>
 	pub fn id(&self) -> String {
@@ -50,9 +68,9 @@ impl Token {
 	/// This is primarily used to access the value of a token, when we are expanding a token value that references another token.
 	/// Because of this, it's only ever called directly for Standard tokens and Shadow tokens. Composition tokens are processed
 	/// differently as they are serialized as CSS classes containing multiple properties, as appose to CSS Variables. 
-    pub fn value(&self, store: &dyn TokenStore, value_as: ValueAs, nested: bool, theme: &Option<String>) -> String {
+    pub fn value(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> String {
         let mut value = match self {
-            Token::Standard(t) => t.get_value(store, value_as, nested, theme),
+            Token::Standard(t) => t.get_value(store, value_as, theme),
             Token::Shadow(t) => t.get_value(store, value_as, theme),
             Token::Composition(t) => {
 				// Composition tokens are output as classes, containing properties for each inner value of the token.
@@ -84,16 +102,54 @@ impl Token {
 			value = format!("calc({})", value);
 		}
 
-        value
+		match self.kind() {
+			TokenKind::Color => {	
+				if !self.is_reference() {
+					Rgb::from_hex_str(&value)
+						.map(|rgb| format!("{}, {}, {}", rgb.get_red(), rgb.get_green(), rgb.get_blue()))
+						.unwrap_or_else(|_| value.clone())
+				} else {
+					value
+				}
+			}
+			_ => value
+		}
+
     }
 
 	pub fn serialize(&self, store: &dyn TokenStore, value_as: ValueAs, theme: &Option<String>) -> String {
 		match self {
-			Token::Standard(_) | Token::Shadow(_) => {
+			Token::Standard(def) => {
+				match self.kind() {
+					TokenKind::Color => {
+						if self.is_reference() && !def.value.starts_with("rgb") {
+							format!(
+								"--{}: rgb({});",
+								css_stringify(&self.name()),
+								self.value(store, value_as, theme)
+							)
+						} else {	
+							format!(
+								"--{}: {};",
+								css_stringify(&self.name()),
+								self.value(store, value_as, theme)
+							)
+						}
+					}
+					_ => {
+						format!(
+							"--{}: {};",
+							css_stringify(&self.name()),
+							self.value(store, value_as, theme)
+						)
+					}
+				}
+			}
+			Token::Shadow(_) => {
 				format!(
 					"--{}: {};",
 					css_stringify(&self.name()),
-					self.value(store, value_as, false, theme)
+					self.value(store, value_as, theme)
 				)
 			}
 			Token::Composition(_) => {
@@ -101,7 +157,7 @@ impl Token {
 				format!(
 					".{} {{{}}}", 
 					selector_name, 
-					&self.value(store, value_as, false, theme)
+					&self.value(store, value_as, theme)
 				)
 			},
 		}
@@ -114,7 +170,7 @@ impl Token {
 				let mut key_parts = token_name.split(".").collect::<Vec<&str>>();
 				key_parts.reverse();
 
-				let value = self.value(store, value_as, false, theme);
+				let value = self.value(store, value_as, theme);
 				
 				let mut j = json!(value);
 				for key in key_parts {
@@ -168,7 +224,7 @@ mod test {
 			
 			let token = Token::Standard(token_definition);
 
-			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "24px".to_string());
+			assert_eq!(token.value(&store, ValueAs::CssVariables, &None), "24px".to_string());
 		}
 		
 		#[test]
@@ -203,13 +259,13 @@ mod test {
 
 			// Check the static replace method produces the expected output
 			assert_eq!(
-				token.value(&store, ValueAs::StaticValues, false, &None), 
+				token.value(&store, ValueAs::StaticValues, &None), 
 				String::from("rgb(0, 0, 0)")
 			);
 
 			// Check the css variables replace method produces the expected output.
 			assert_eq!(
-				token.value(&store, ValueAs::CssVariables, false, &None), 
+				token.value(&store, ValueAs::CssVariables, &None), 
 				format!(
 					"rgb(var(--{}))", 
 					css_stringify(&ref_token.name())
@@ -246,8 +302,8 @@ mod test {
 				kind: TokenKind::Color,
 			});
 
-			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "rgba(var(--neutral-0), 0.89)");
-			assert_eq!(token.value(&store, ValueAs::StaticValues, false, &None), "rgba(0, 0, 0, 0.89)");
+			assert_eq!(token.value(&store, ValueAs::CssVariables, &None), "rgba(var(--neutral-0), 0.89)");
+			assert_eq!(token.value(&store, ValueAs::StaticValues, &None), "rgba(0, 0, 0, 0.89)");
 		}
 
 		#[test]
@@ -272,7 +328,7 @@ mod test {
 
 			let token = Token::Shadow(token_definition);
 
-			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.1)");
+			assert_eq!(token.value(&store, ValueAs::CssVariables, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.1)");
 		}	
 		
 		#[test]
@@ -316,8 +372,8 @@ mod test {
 
 			let token = Token::Shadow(token_definition);
 
-			assert_eq!(token.value(&store, ValueAs::CssVariables, false, &None), "0px 0px 0px 0px var(--shadow)");
-			assert_eq!(token.value(&store, ValueAs::StaticValues, false, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.05)");
+			assert_eq!(token.value(&store, ValueAs::CssVariables, &None), "0px 0px 0px 0px var(--shadow)");
+			assert_eq!(token.value(&store, ValueAs::StaticValues, &None), "0px 0px 0px 0px rgba(0, 0, 0, 0.05)");
 		}	
 	}
 }
