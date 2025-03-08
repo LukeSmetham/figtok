@@ -1,5 +1,5 @@
 use serde_derive::{Serialize, Deserialize};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserializer, Deserialize};
 
 /// A struct for handling shadow values from Figma Token Studio.
 /// 
