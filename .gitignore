@@ -3,6 +3,7 @@
 packages/**/target
 target/
 tokens/
+.env
 
 build/
 
