@@ -1,4 +1,4 @@
-use std::{default::Default, fs, io};
+use std::{collections::HashMap, default::Default, fs, io};
 
 use crate::{log, Figtok, TokenStore};
 use figtok_tokens::{Token, TokenSet};
@@ -54,19 +54,19 @@ impl CssSerializer {
 
     pub fn serialize_themes(&self, store: &Figtok) {
         log!("Detected {} themes...", store.themes.len());
+		let mut themes: HashMap<String, (String, String)> = HashMap::with_capacity(store.themes.len());
 
         for (name, sets) in &store.themes {
             log!("Generating Theme: {}", name);
 
             let mut variables = String::new();
             let mut classes = String::new();
-
-            for set_name in sets
-                .into_iter()
-                .filter(|(_, v)| v.as_str() != "disabled")
-                .map(|(k, _)| k)
+            // Filter out disabled sets and get their names, then sort them according to token_set_order
+            for set_name in store.token_set_order.iter()
+                .filter(|&order_name| sets.contains_key(order_name) && sets[order_name].as_str() != "disabled")
                 .collect::<Vec<&String>>()
             {
+				log!("Token Set: {}", set_name);
                 let token_set: &TokenSet = &store.token_sets[set_name];
 
                 let output = self.serialize_token_set(store, token_set, &Some(name.clone()));
@@ -76,10 +76,17 @@ impl CssSerializer {
 
             // Write the css file.
             let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
-            let file_name = [store.output_path.to_string(), name_parts.join("-")].join("/");
-
-            let _ = self.write_file(file_name, format!(":root{{{}}}\n{}", variables, classes));
+            
+			themes.insert(name_parts.join("-"), (variables, classes));
         }
+
+		let mut output = String::new();
+		for (name, (variables, classes)) in themes {
+			output.push_str(&format!(":root[data-theme=\"{}\"]{{{}}}\n{}\n", name, variables, classes));
+		}
+
+		let file_name = [store.output_path.to_string(), "theme".to_string()].join("/");
+		let _ = self.write_file(file_name, output);
     }
 
     pub fn serialize_token_sets(&self, store: &Figtok) {
