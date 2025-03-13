@@ -53,6 +53,7 @@ impl TokenStore for Figtok {
 		}
 	}
 
+	/// Given a string containing a handlebars reference to a token, retrieve the actual token value and replace the reference with the value.
 	fn enrich(&self, reference: String, value_as: ValueAs, theme: &Option<String>) -> String {
 		REGEX_HB
 			.replace_all(&reference, |caps: &Captures| {
