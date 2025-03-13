@@ -19,16 +19,18 @@ pub struct Figtok {
     pub token_sets: TokenSets,
     pub themes: Themes,
     pub token_set_order: Vec<String>,
+	pub default_theme_name: Option<String>,
 }
 
 impl Figtok {
-    pub fn new(tokens: Tokens, token_sets: TokenSets, themes: Themes, token_set_order: Vec<String>, output_path: &String) -> Self {
+    pub fn new(tokens: Tokens, token_sets: TokenSets, themes: Themes, token_set_order: Vec<String>, output_path: &String, default_theme_name: Option<String>) -> Self {
 		Figtok {
 			output_path: output_path.clone(),
 			tokens,
             token_sets,
             themes,
             token_set_order,
+			default_theme_name,
 		}
     }
 

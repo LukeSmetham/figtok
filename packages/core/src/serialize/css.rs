@@ -61,12 +61,13 @@ impl CssSerializer {
 
             let mut variables = String::new();
             let mut classes = String::new();
+			
             // Filter out disabled sets and get their names, then sort them according to token_set_order
             for set_name in store.token_set_order.iter()
                 .filter(|&order_name| sets.contains_key(order_name) && sets[order_name].as_str() != "disabled")
                 .collect::<Vec<&String>>()
             {
-				log!("Token Set: {}", set_name);
+				log!("Serializing token set: {}", set_name);
                 let token_set: &TokenSet = &store.token_sets[set_name];
 
                 let output = self.serialize_token_set(store, token_set, &Some(name.clone()));
@@ -82,7 +83,18 @@ impl CssSerializer {
 
 		let mut output = String::new();
 		for (name, (variables, classes)) in themes {
-			output.push_str(&format!(":root[data-theme=\"{}\"]{{{}}}\n{}\n", name, variables, classes));
+			// Check if the current theme matches the default theme (if one is set)
+			let base_selector = if let Some(default_theme) = &store.default_theme_name {
+				if default_theme == &name {
+					":root".to_string()
+				} else {
+					format!(":root[data-theme=\"{}\"]", name)
+				}
+			} else {
+				format!(":root[data-theme=\"{}\"]", name)
+			};
+
+			output.push_str(&format!("{}{{{}}}\n{}", base_selector, variables, classes));
 		}
 
 		let file_name = [store.output_path.to_string(), "theme".to_string()].join("/");
