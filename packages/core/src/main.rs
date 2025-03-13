@@ -25,6 +25,10 @@ struct Args {
     /// The format to output the tokens to. Currently only supports CSS.
     #[arg(short, long, default_value = "css")]
     format: String,
+
+	/// The token output strategy.
+    #[arg(short, long, value_enum, default_value = "static")]
+    strategy: figtok_tokens::ValueAs
 }
 
 fn main() {
@@ -58,6 +62,7 @@ fn main() {
 		themes, 
 		token_set_order, 
 		&args.output,
+		args.strategy,
 	);
 
 	figtok.serialize(serializer);
