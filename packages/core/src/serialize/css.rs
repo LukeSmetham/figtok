@@ -84,15 +84,7 @@ impl CssSerializer {
 		let mut output = String::new();
 		for (name, (variables, classes)) in themes {
 			// Check if the current theme matches the default theme (if one is set)
-			let base_selector = if let Some(default_theme) = &store.default_theme_name {
-				if default_theme == &name {
-					":root".to_string()
-				} else {
-					format!(":root[data-theme=\"{}\"]", name)
-				}
-			} else {
-				format!(":root[data-theme=\"{}\"]", name)
-			};
+			let base_selector = format!(":root[data-theme=\"{}\"]", name);
 
 			output.push_str(&format!("{}{{{}}}\n{}", base_selector, variables, classes));
 		}

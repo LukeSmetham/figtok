@@ -25,10 +25,6 @@ struct Args {
     /// The format to output the tokens to. Currently only supports CSS.
     #[arg(short, long, default_value = "css")]
     format: String,
-    
-	/// If the theme name matches this value, it will be serialized directly into :root rather than requiring a data-theme attribute.
-    #[arg(short, long)]
-    default_theme: Option<String>,
 }
 
 fn main() {
@@ -62,7 +58,6 @@ fn main() {
 		themes, 
 		token_set_order, 
 		&args.output,
-		args.default_theme.or(Some("light".to_string()))
 	);
 
 	figtok.serialize(serializer);
