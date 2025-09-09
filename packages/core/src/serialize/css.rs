@@ -7,6 +7,7 @@ use super::Serializer;
 
 #[derive(Default)]
 pub struct CssSerializer {}
+
 impl Serializer for CssSerializer {
     fn serialize(&self, store: &Figtok) {
         if !store.themes.is_empty() {
@@ -20,6 +21,7 @@ impl Serializer for CssSerializer {
         fs::write(format!("{}.css", file_name), content)
     }
 }
+
 impl CssSerializer {
     pub fn new() -> Self {
         CssSerializer {}

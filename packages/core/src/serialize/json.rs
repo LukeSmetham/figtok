@@ -9,6 +9,7 @@ use super::Serializer;
 
 #[derive(Default)]
 pub struct JsonSerializer {}
+
 impl Serializer for JsonSerializer {
 	fn serialize(&self, store: &Figtok) {
 		if !store.themes.is_empty() {
@@ -24,6 +25,7 @@ impl Serializer for JsonSerializer {
 		)
 	}
 }
+
 impl JsonSerializer {
 	pub fn new() -> Self {
 		JsonSerializer {}
@@ -46,7 +48,7 @@ impl JsonSerializer {
 				};
 			}
 
-			// Write the css file.
+			// Write the json file.
 			let name_parts: Vec<&str> = name.split("/").map(|s| s.trim()).collect();
 			let _ = self.write_file(
 				[store.output_path.to_string(), name_parts.join("-")].join("/"),
